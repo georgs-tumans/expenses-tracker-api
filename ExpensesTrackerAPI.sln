@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32126.317
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExpensesTrackerAPI", "ExpensesTrackerAPI\ExpensesTrackerAPI.csproj", "{2EF61232-9E06-4434-A077-7ADDDB3CA6BB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{EDB9AB13-5D4A-4575-8308-DF9712F179D1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{F0BCFFB2-AF76-4BF8-8EED-85871F6EA3C0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2EF61232-9E06-4434-A077-7ADDDB3CA6BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EF61232-9E06-4434-A077-7ADDDB3CA6BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EF61232-9E06-4434-A077-7ADDDB3CA6BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2EF61232-9E06-4434-A077-7ADDDB3CA6BB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{2EF61232-9E06-4434-A077-7ADDDB3CA6BB} = {EDB9AB13-5D4A-4575-8308-DF9712F179D1}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {13885393-A5E6-42B2-9FA8-BBEBEA136E85}
+	EndGlobalSection
+EndGlobal
