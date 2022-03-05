@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace ExpensesTrackerAPI.Models
+namespace ExpensesTrackerAPI.Models.Database
 {
     public class Expense
     {
@@ -9,6 +9,7 @@ namespace ExpensesTrackerAPI.Models
         [Required]
         public double Amount { get; set; }
 
+        [Required]
         public string? Note { get; set; }
     }
 }

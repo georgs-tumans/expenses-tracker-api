@@ -15,7 +15,7 @@ namespace ExpensesTrackerAPI.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Amount = table.Column<int>(type: "integer", nullable: false),
+                    Amount = table.Column<int>(type: "numeric", nullable: false),
                     Note = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>

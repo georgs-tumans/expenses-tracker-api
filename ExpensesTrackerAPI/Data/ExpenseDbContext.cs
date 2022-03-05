@@ -1,4 +1,4 @@
-﻿using ExpensesTrackerAPI.Models;
+﻿using ExpensesTrackerAPI.Models.Database;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExpensesTrackerAPI.Data
