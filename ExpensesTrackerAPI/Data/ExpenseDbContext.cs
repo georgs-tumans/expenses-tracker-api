@@ -8,5 +8,6 @@ namespace ExpensesTrackerAPI.Data
         public ExpenseDbContext(DbContextOptions<ExpenseDbContext> options) : base(options) { }
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<ExpenseCategory> ExpensesCategories { get; set;}
+        public DbSet<Weblog> Weblogs { get; set; }
     }
 }

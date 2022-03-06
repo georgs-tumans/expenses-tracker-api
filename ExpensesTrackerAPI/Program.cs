@@ -31,6 +31,7 @@ builder.Services.AddVersionedApiExplorer(setup =>
     setup.SubstituteApiVersionInUrl = true;
 });
 builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
+builder.Services.AddScoped<WeblogService>();
 
 
 var app = builder.Build();

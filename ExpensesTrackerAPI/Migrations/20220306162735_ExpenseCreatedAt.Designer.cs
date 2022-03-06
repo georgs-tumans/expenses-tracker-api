@@ -3,6 +3,7 @@ using System;
 using ExpensesTrackerAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ExpensesTrackerAPI.Migrations
 {
     [DbContext(typeof(ExpenseDbContext))]
-    partial class ExpenseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220306162735_ExpenseCreatedAt")]
+    partial class ExpenseCreatedAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -64,38 +66,6 @@ namespace ExpensesTrackerAPI.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ExpensesCategories");
-                });
-
-            modelBuilder.Entity("ExpensesTrackerAPI.Models.Database.Weblog", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("LogInfo1")
-                        .HasColumnType("text");
-
-                    b.Property<string>("LogInfo2")
-                        .HasColumnType("text");
-
-                    b.Property<int>("LogLevel")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("LogMessage")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("LogTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("StackTrace")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Weblogs");
                 });
 #pragma warning restore 612, 618
         }

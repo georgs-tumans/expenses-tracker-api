@@ -15,10 +15,10 @@ namespace ExpensesTrackerAPI.Controllers
     [Produces("application/json")]
     public class ExpenseController : ControllerBase
     {
-        private readonly ILogger<ExpenseController> _logger;
+        private readonly WeblogService _logger;
         private readonly ExpenseDbContext _dbContext;
 
-        public ExpenseController(ILogger<ExpenseController> logger, ExpenseDbContext context)
+        public ExpenseController(WeblogService logger, ExpenseDbContext context)
         {
             _logger = logger;
             _dbContext = context;
@@ -36,10 +36,13 @@ namespace ExpensesTrackerAPI.Controllers
                 var newExpense = new Expense
                 {
                     Amount = (double) expense.Amount, //won't be null because of automatic incoming object validation
-                    Note = expense.Description
+                    Note = expense.Description,
+                    CreatedAt = DateTime.UtcNow
                 };
+
                 _dbContext.Expenses.Add(newExpense);
                 await _dbContext.SaveChangesAsync();
+
                 return Ok(new AddExpenseResponse
                 {
                     ExpenseId = newExpense.Id
@@ -47,6 +50,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogMessage($"Error executing ExceptionController.Add: {ex.Message}", 4, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -77,6 +81,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogMessage($"Error executing ExceptionController.Update: {ex.Message}", 4, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -105,6 +110,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogMessage($"Error executing ExceptionController.Delete: {ex.Message}", 4, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -122,6 +128,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogMessage($"Error executing ExpetionCotroller.GetAll: {ex.Message}", 4, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
@@ -146,6 +153,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogMessage($"Error executing ExceptionController.Get: {ex.Message}", 4, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
