@@ -1,4 +1,5 @@
 global using ExpensesTrackerAPI.Data;
+global using ExpensesTrackerAPI.Helpers;
 using ExpensesTrackerAPI;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Versioning;
@@ -31,7 +32,7 @@ builder.Services.AddVersionedApiExplorer(setup =>
     setup.SubstituteApiVersionInUrl = true;
 });
 builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
-builder.Services.AddScoped<WeblogService>();
+builder.Services.AddScoped<IWeblogService, WeblogService>();
 
 
 var app = builder.Build();

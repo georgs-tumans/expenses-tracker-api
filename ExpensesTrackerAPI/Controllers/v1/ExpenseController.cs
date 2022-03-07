@@ -15,10 +15,10 @@ namespace ExpensesTrackerAPI.Controllers
     [Produces("application/json")]
     public class ExpenseController : ControllerBase
     {
-        private readonly WeblogService _logger;
+        private readonly IWeblogService _logger;
         private readonly ExpenseDbContext _dbContext;
 
-        public ExpenseController(WeblogService logger, ExpenseDbContext context)
+        public ExpenseController(IWeblogService logger, ExpenseDbContext context)
         {
             _logger = logger;
             _dbContext = context;
@@ -50,7 +50,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"Error executing ExceptionController.Add: {ex.Message}", 4, ex.StackTrace);
+                _logger.LogMessage($"Error executing ExceptionController.Add: {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -68,7 +68,10 @@ namespace ExpensesTrackerAPI.Controllers
             { 
                 var dbExpense = await _dbContext.Expenses.Where(x => x.Id == requestExpense.Id).FirstAsync();
                 if (dbExpense == null)
+                {
+                    _logger.LogMessage("[ExpenseController.Update] Expense not found", (int)Helpers.LogLevel.Information, null, $"id: {requestExpense.Id}");
                     return NotFound("Expense not found");
+                } 
                 else
                 {
                     dbExpense.Amount = (int)requestExpense.Amount; //won't be null because of automatic incoming object validation
@@ -81,7 +84,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"Error executing ExceptionController.Update: {ex.Message}", 4, ex.StackTrace);
+                _logger.LogMessage($"[ExpenseController.Update] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -99,7 +102,10 @@ namespace ExpensesTrackerAPI.Controllers
             {
                 var dbExpense = await _dbContext.Expenses.FindAsync(id);
                 if (dbExpense == null)
+                {
+                    _logger.LogMessage("[ExpenseController.Delete] Expense not found", (int)Helpers.LogLevel.Information, null, $"id: {id}");
                     return NotFound("Expense not found");
+                } 
                 else
                 {
                     _dbContext.Expenses.Remove(dbExpense);
@@ -110,7 +116,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"Error executing ExceptionController.Delete: {ex.Message}", 4, ex.StackTrace);
+                _logger.LogMessage($"[ExpenseController.Delete] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -128,7 +134,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"Error executing ExpetionCotroller.GetAll: {ex.Message}", 4, ex.StackTrace);
+                _logger.LogMessage($"[ExpenseController.GetAll] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
@@ -147,13 +153,16 @@ namespace ExpensesTrackerAPI.Controllers
             {
                 var expense = await _dbContext.Expenses.FindAsync(id);
                 if (expense == null)
+                {
+                    _logger.LogMessage("[ExpenseController.Get] Expense not found", (int)Helpers.LogLevel.Information, null, $"id: {id}");
                     return NotFound("Expense not found");
+                }
                 else
                     return Ok(expense);
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"Error executing ExceptionController.Get: {ex.Message}", 4, ex.StackTrace);
+                _logger.LogMessage($"[ExpenseController.Get] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
