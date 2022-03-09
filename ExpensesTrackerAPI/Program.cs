@@ -33,6 +33,7 @@ builder.Services.AddVersionedApiExplorer(setup =>
 });
 builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
 builder.Services.AddScoped<IWeblogService, WeblogService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 
 var app = builder.Build();

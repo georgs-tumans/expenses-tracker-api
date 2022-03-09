@@ -50,7 +50,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"Error executing ExceptionController.Add: {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace);
+                _logger.LogMessage($"[ExpenseController.Add] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -126,11 +126,21 @@ namespace ExpensesTrackerAPI.Controllers
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.InternalServerError)]
         [SwaggerResponse(200, Description = "Ok")]
         [SwaggerResponse(500, Description = "Internal server error")]
-        public async Task<ActionResult<List<Expense>>> GetAll()
+        public async Task<ActionResult<List<Expense>>> GetAll(int? category, DateTime? dateFrom, DateTime? dateTo, int? limit )
         {
             try
             {
-                return Ok(await _dbContext.Expenses.OrderBy(x => x.Id).ToListAsync());
+                var resultList = _dbContext.Expenses.OrderBy(x => x.Id);
+
+                if (dateFrom != null)
+                    resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CreatedAt >= dateFrom);
+                if (dateTo != null)
+                    resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CreatedAt <= dateTo);
+
+                if (limit != null)
+                    resultList = (IOrderedQueryable<Expense>)resultList.Take((int)limit);
+
+                return Ok(await resultList.ToListAsync());
             }
             catch (Exception ex)
             {
