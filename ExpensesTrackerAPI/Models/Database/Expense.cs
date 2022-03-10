@@ -12,5 +12,7 @@ namespace ExpensesTrackerAPI.Models.Database
         [Required]
         public string? Note { get; set; }
         public DateTime? CreatedAt { get; set; }
+        [Required]
+        public int UserId { get; set; }
     }
 }

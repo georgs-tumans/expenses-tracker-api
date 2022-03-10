@@ -36,7 +36,7 @@ namespace ExpensesTrackerAPI.Helpers
             return hasNumber.IsMatch(password) && hasUpperChar.IsMatch(password) && hasSymbols.IsMatch(password);
         }
 
-        public string CreateToken(User user, string tokenKey)
+        public string CreateToken(User user, string tokenKey, UserType userType)
         {
             List<Claim> claims = new List<Claim>
             {
@@ -44,9 +44,12 @@ namespace ExpensesTrackerAPI.Helpers
                 new Claim(ClaimTypes.Email, user.Email),
             };
 
+            if (userType == UserType.User) claims.Add(new Claim(ClaimTypes.Role, "user"));
+            else claims.Add(new Claim(ClaimTypes.Role, "admin"));
+
             var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(tokenKey));
             var cred = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
-            var token = new JwtSecurityToken(claims: claims, expires: DateTime.Now.AddHours(2), signingCredentials: cred);
+            var token = new JwtSecurityToken(claims: claims, expires: DateTime.UtcNow.AddHours(2), signingCredentials: cred);
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
 
             return jwt;

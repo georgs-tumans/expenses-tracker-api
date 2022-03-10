@@ -14,6 +14,11 @@ namespace ExpensesTrackerAPI.Models.Requests
         /// <summary>
         /// Some description of the expense
         /// </summary>
-        public string Description { get; set; } = String.Empty;   
+        public string Description { get; set; } = String.Empty;
+        /// <summary>
+        /// User who created the expense
+        /// </summary>
+        [Required]
+        public int UserId { get; set; }
     }
 }

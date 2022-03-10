@@ -62,7 +62,9 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     Username = request.UserName.Trim(),
                     PasswordHash = passwordHash,
                     PasswordSalt = passwordSalt,
-                    Active = 1
+                    Active = 1,
+                    AccountType = (int)UserType.User,
+                    RegistrationDate = DateTime.UtcNow
                 };
                 //ToDo: add registration confirmation via email
 
@@ -106,7 +108,8 @@ namespace ExpensesTrackerAPI.Controllers.v1
                         bool verified = _authService.VerifyPasswordHash(request.Password.Trim(), user.PasswordHash, user.PasswordSalt);
                         if (verified)
                         {
-                            string token = _authService.CreateToken(user, _configuration.GetSection("AuthTokenKey").Value);
+                            UserType type = (UserType)user.AccountType;
+                            string token = _authService.CreateToken(user, _configuration.GetSection("AuthTokenKey").Value, type);
                             return Ok(token);
                         }
                         else

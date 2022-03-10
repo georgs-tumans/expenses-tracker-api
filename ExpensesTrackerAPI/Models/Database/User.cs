@@ -18,6 +18,10 @@ namespace ExpensesTrackerAPI.Models.Database
         public string Email { get; set; } = string.Empty;
         public string? PhoneNumber { get; set; }
         [Required]
-        public int Active { get; set; } = 0;
+        public int Active { get; set; } = 1;
+        [Required]
+        public int AccountType { get; set; } = (int)UserType.User;
+        [Required]
+        public DateTime RegistrationDate { get; set; }
     }
 }
