@@ -1,5 +1,6 @@
 ﻿using ExpensesTrackerAPI.Models.Database;
 using ExpensesTrackerAPI.Models.Requests;
+using ExpensesTrackerAPI.Models.Responses;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net;
@@ -91,7 +92,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
         [SwaggerResponse(404, Description = "Not found")]
         [SwaggerResponse(500, Description = "Internal server error")]
         [Route("api/v{version:apiVersion}/[controller]/login")]
-        public async Task<ActionResult<string>> Login(LoginUserRequest request)
+        public async Task<ActionResult<LoginResponse>> Login(LoginUserRequest request)
         {
             try
             {
@@ -110,7 +111,20 @@ namespace ExpensesTrackerAPI.Controllers.v1
                         {
                             UserType type = (UserType)user.AccountType;
                             string token = _authService.CreateToken(user, _configuration.GetSection("AuthTokenKey").Value, type);
-                            return Ok(token);
+                            LoginResponse response = new LoginResponse
+                            {
+                                Id = user.Id,
+                                Username = user.Username,
+                                Email = user.Email,
+                                Name = user.Name,
+                                Surname = user.Surname,
+                                AccountType = user.AccountType,
+                                PhoneNumber = user.PhoneNumber,
+                                RegistrationDate = user.RegistrationDate,
+                                JwtToken = token
+                            };
+
+                            return Ok(response);
                         }
                         else
                             return BadRequest("Incorrect password");

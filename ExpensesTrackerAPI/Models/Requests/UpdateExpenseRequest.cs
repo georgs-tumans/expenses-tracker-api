@@ -18,10 +18,5 @@ namespace ExpensesTrackerAPI.Models.Requests
         /// Some description of the expense
         /// </summary>
         public string Description { get; set; } = String.Empty;
-        /// <summary>
-        /// User who is trying to make the update
-        /// </summary>
-        [Required]
-        public int UserId { get; set; }
     }
 }

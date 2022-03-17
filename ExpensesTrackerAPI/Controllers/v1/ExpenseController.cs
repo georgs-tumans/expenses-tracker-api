@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
 using System.ComponentModel.DataAnnotations;
 using System.Net;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace ExpensesTrackerAPI.Controllers
@@ -22,6 +23,7 @@ namespace ExpensesTrackerAPI.Controllers
     {
         private readonly IWeblogService _logger;
         private readonly ExpenseDbContext _dbContext;
+        private int _userId;
 
         public ExpenseController(IWeblogService logger, ExpenseDbContext context)
         {
@@ -39,12 +41,13 @@ namespace ExpensesTrackerAPI.Controllers
         {
             try
             {
+                _userId = GetUserId();
                 var newExpense = new Expense
                 {
                     Amount = (double)request.Amount, //won't be null because of automatic incoming object validation
                     Note = request.Description,
                     CreatedAt = DateTime.UtcNow,
-                    UserId = request.UserId,
+                    UserId = _userId,
                 };
 
                 _dbContext.Expenses.Add(newExpense);
@@ -57,7 +60,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.Add] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request));
+                _logger.LogMessage($"[ExpenseController.Add] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), $"Current user id: {_userId}");
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -72,14 +75,15 @@ namespace ExpensesTrackerAPI.Controllers
         public async Task<ActionResult> Update(UpdateExpenseRequest request)
         {
             try
-            { 
+            {
+                _userId = GetUserId();
                 //Admin users should be able to update any expense
-                bool isAdmin = await _dbContext.Users.Where(x => x.Id == request.UserId && x.AccountType == (int)UserType.Administrator).AnyAsync();
-                var dbExpense = await _dbContext.Expenses.Where(x => x.Id == request.Id && (request.UserId == x.UserId || isAdmin)).FirstAsync();
-                
+                bool isAdmin = await IsAdmin();
+                var dbExpense = await _dbContext.Expenses.Where(x => x.Id == request.Id && (_userId == x.UserId || isAdmin)).FirstOrDefaultAsync();
+
                 if (dbExpense == null)
                 {
-                    _logger.LogMessage("[ExpenseController.Update] Expense not found", (int)Helpers.LogLevel.Information, null, $"id: {request.Id}");
+                    _logger.LogMessage("[ExpenseController.Update] Expense not found", (int)Helpers.LogLevel.Information, null, $"id: {request.Id}, userId: {_userId}");
                     return NotFound("Expense not found or you have no access to it");
                 } 
                 else
@@ -94,7 +98,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.Update] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request));
+                _logger.LogMessage($"[ExpenseController.Update] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), $"Current user id: {_userId}");
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -106,17 +110,18 @@ namespace ExpensesTrackerAPI.Controllers
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.NotFound)]
         [SwaggerResponse(200, Description = "Ok")]
         [SwaggerResponse(404, Description = "Not found")]
-        public async Task<ActionResult> Delete([Required] int expenseId, [Required] int userId)
+        public async Task<ActionResult> Delete([Required] int expenseId)
         {
             try
             {
+                _userId = GetUserId();
                 //Admin users should be able to delete any expense
-                bool isAdmin = await _dbContext.Users.Where(x => x.Id == userId && x.AccountType == (int)UserType.Administrator).AnyAsync();
-                var dbExpense = await _dbContext.Expenses.Where(x => x.Id == expenseId && (x.UserId == userId || isAdmin)).FirstAsync();
+                bool isAdmin = await IsAdmin();
+                var dbExpense = await _dbContext.Expenses.Where(x => x.Id == expenseId && (x.UserId == _userId || isAdmin)).FirstOrDefaultAsync();
 
                 if (dbExpense == null)
                 {
-                    _logger.LogMessage("[ExpenseController.Delete] Expense not found", (int)Helpers.LogLevel.Information, null, $"expenseId: {expenseId}, userId: {userId}");
+                    _logger.LogMessage("[ExpenseController.Delete] Expense not found", (int)Helpers.LogLevel.Information, null, $"expenseId: {expenseId}, userId: {_userId}");
                     return NotFound("Expense not found or you have no access to it");
                 } 
                 else
@@ -129,7 +134,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.Delete] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"expenseId: {expenseId}, userId: {userId}");
+                _logger.LogMessage($"[ExpenseController.Delete] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"expenseId: {expenseId}, userId: {_userId}");
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -139,11 +144,12 @@ namespace ExpensesTrackerAPI.Controllers
         [Route("api/v{version:apiVersion}/[controller]/GetAllUser")]
         [ProducesResponseType(typeof(byte[]), (int)HttpStatusCode.OK)]
         [SwaggerResponse(200, Description = "Ok")]
-        public async Task<ActionResult<List<Expense>>> GetAll([Required] int userId, DateTime? dateFrom, DateTime? dateTo, int? category, int? limit)
+        public async Task<ActionResult<List<Expense>>> GetAll(DateTime? dateFrom, DateTime? dateTo, int? category, int? limit)
         {
             try
             {
-                var resultList = _dbContext.Expenses.Where(x => x.UserId == userId).OrderBy(x => x.Id);
+                _userId = GetUserId();
+                var resultList = _dbContext.Expenses.Where(x => x.UserId == _userId).OrderBy(x => x.Id);
 
                 if (dateFrom != null)
                     resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CreatedAt >= dateFrom);
@@ -158,7 +164,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.GetAll] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, userId: {userId}, category: {category}, limit: {limit}");
+                _logger.LogMessage($"[ExpenseController.GetAll] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, userId: {_userId}, category: {category}, limit: {limit}");
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
@@ -172,11 +178,12 @@ namespace ExpensesTrackerAPI.Controllers
         [ProducesResponseType(typeof(byte[]), (int)HttpStatusCode.Forbidden)]
         [SwaggerResponse(200, Description = "Ok")]
         [SwaggerResponse(403, Description = "Forbidden")]
-        public async Task<ActionResult<List<Expense>>> GetAllAdmin([Required] int currentUserId, DateTime? dateFrom, DateTime? dateTo, int? category, int? limit, int? filterUserId)
+        public async Task<ActionResult<List<Expense>>> GetAllAdmin(DateTime? dateFrom, DateTime? dateTo, int? category, int? limit, int? filterUserId)
         {
             try
             {
-                bool isAdmin = await _dbContext.Users.Where(x => x.Id == currentUserId && x.AccountType == (int)UserType.Administrator).AnyAsync();
+                _userId = GetUserId();
+                bool isAdmin = await IsAdmin();
 
                 if (isAdmin)
                 {
@@ -203,7 +210,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.GetAllAdmin] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}, limit: {limit}, filterUserId: { filterUserId}");
+                _logger.LogMessage($"[ExpenseController.GetAllAdmin] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}, limit: {limit}, filterUserId: { filterUserId}, current userId: {_userId}");
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
@@ -216,28 +223,46 @@ namespace ExpensesTrackerAPI.Controllers
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.NotFound)]
         [SwaggerResponse(200, Description = "Ok")]
         [SwaggerResponse(404, Description = "Not found")]
-        public async Task<ActionResult<Expense>> Get([Required] int expenseId, [Required] int userId)
+        public async Task<ActionResult<Expense>> Get([Required] int expenseId)
         {
             try
             {
+                _userId = GetUserId();
                 //Admin users should be able to get any expense
-                bool isAdmin = await _dbContext.Users.Where(x => x.Id == userId && x.AccountType == (int)UserType.Administrator).AnyAsync();
-                var expense = await _dbContext.Expenses.Where(x => x.Id == expenseId && (x.UserId == userId || isAdmin)).FirstAsync();
+                bool isAdmin = await IsAdmin();
+                var expense = await _dbContext.Expenses.Where(x => x.Id == expenseId && (x.UserId == _userId || isAdmin)).FirstOrDefaultAsync();
 
                 if (expense == null)
                 {
-                    _logger.LogMessage("[ExpenseController.Get] Expense not found", (int)Helpers.LogLevel.Information, null, $"userId: {userId}, epenseId: {expenseId}");
-                    return NotFound("Expense not found");
+                    _logger.LogMessage("[ExpenseController.Get] Expense not found", (int)Helpers.LogLevel.Information, null, $"userId: {_userId}, epenseId: {expenseId}");
+                    return NotFound("Expense not found or you have no access to it");
                 }
                 else
                     return Ok(expense);
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.Get] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"userId: {userId}, epenseId: {expenseId}");
+                _logger.LogMessage($"[ExpenseController.Get] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"userId: {_userId}, epenseId: {expenseId}");
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
+        }
+
+        private async Task<bool> IsAdmin()
+        {
+            return await _dbContext.Users.Where(x => x.Id == _userId && x.AccountType == (int)UserType.Administrator).AnyAsync();
+        }
+        private int GetUserId()
+        {
+            try
+            {
+                return int.Parse(User.Claims.First(x => x.Type == ClaimTypes.PrimarySid).Value);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Failed to get user id from the auth token: " + ex.Message);
+            }
+            
         }
     }
 }
