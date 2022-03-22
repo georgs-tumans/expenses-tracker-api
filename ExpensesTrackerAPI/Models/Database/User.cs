@@ -5,7 +5,8 @@ namespace ExpensesTrackerAPI.Models.Database
     public class User
     {
         [Required]
-        public int Id { get; set; }
+        [Key]
+        public int UserId { get; set; }
         [Required]
         public string Username { get; set; } = string.Empty;
         [Required]

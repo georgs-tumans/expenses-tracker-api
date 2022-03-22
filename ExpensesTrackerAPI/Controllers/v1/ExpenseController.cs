@@ -35,19 +35,40 @@ namespace ExpensesTrackerAPI.Controllers
         [Authorize(Roles = "user,admin")]
         [Route("api/v{version:apiVersion}/[controller]")]
         [ProducesResponseType(typeof(byte[]), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(byte[]), (int)HttpStatusCode.BadRequest)]
         [SwaggerResponse(200, Description = "Ok")]
-        
+        [SwaggerResponse(400, Description = "Bad request")]
         public async Task<ActionResult<AddExpenseResponse>> Add(AddExpenseRequest request)
         {
             try
             {
                 _userId = GetUserId();
+                bool isAdmin = await IsAdmin();
+                bool found = false;
+
+                //Validate the category of the  expense
+                var cat = await _dbContext.ExpensesCategories.Where(x => x.CategoryId == request.CategoryId && x.Active == 1).FirstOrDefaultAsync();
+
+                if (cat is not null)
+                {
+                    //Check if this user has such a category (only for non-default ones). Admins can add expenses to any categories
+                    if (cat.IsDefault == 0 && !isAdmin) 
+                    {
+                        found = await _dbContext.UserToCategory.Where(x => x.UserId == _userId && x.CategoryId == cat.CategoryId).AnyAsync();
+                    }
+                    else found = true;
+                }
+
+                if (!found)
+                    return BadRequest("Such expense category does not exist");
+
                 var newExpense = new Expense
                 {
                     Amount = (double)request.Amount, //won't be null because of automatic incoming object validation
                     Note = request.Description,
                     CreatedAt = DateTime.UtcNow,
                     UserId = _userId,
+                    CategoryId = (int)request.CategoryId //won't be null because of automatic incoming object validation
                 };
 
                 _dbContext.Expenses.Add(newExpense);
@@ -55,7 +76,7 @@ namespace ExpensesTrackerAPI.Controllers
 
                 return Ok(new AddExpenseResponse
                 {
-                    ExpenseId = newExpense.Id
+                    ExpenseId = newExpense.ExpenseId
                 });
             }
             catch (Exception ex)
@@ -79,7 +100,7 @@ namespace ExpensesTrackerAPI.Controllers
                 _userId = GetUserId();
                 //Admin users should be able to update any expense
                 bool isAdmin = await IsAdmin();
-                var dbExpense = await _dbContext.Expenses.Where(x => x.Id == request.Id && (_userId == x.UserId || isAdmin)).FirstOrDefaultAsync();
+                var dbExpense = await _dbContext.Expenses.Where(x => x.ExpenseId == request.Id && (_userId == x.UserId || isAdmin)).FirstOrDefaultAsync();
 
                 if (dbExpense == null)
                 {
@@ -90,6 +111,7 @@ namespace ExpensesTrackerAPI.Controllers
                 {
                     dbExpense.Amount = (int)request.Amount; //won't be null because of automatic incoming object validation
                     dbExpense.Note = request.Description;
+                    dbExpense.CategoryId = (int)request.CategoryId;
                     _dbContext.Expenses.Update(dbExpense);
                     await _dbContext.SaveChangesAsync();
                     return Ok();
@@ -117,7 +139,7 @@ namespace ExpensesTrackerAPI.Controllers
                 _userId = GetUserId();
                 //Admin users should be able to delete any expense
                 bool isAdmin = await IsAdmin();
-                var dbExpense = await _dbContext.Expenses.Where(x => x.Id == expenseId && (x.UserId == _userId || isAdmin)).FirstOrDefaultAsync();
+                var dbExpense = await _dbContext.Expenses.Where(x => x.ExpenseId == expenseId && (x.UserId == _userId || isAdmin)).FirstOrDefaultAsync();
 
                 if (dbExpense == null)
                 {
@@ -149,7 +171,7 @@ namespace ExpensesTrackerAPI.Controllers
             try
             {
                 _userId = GetUserId();
-                var resultList = _dbContext.Expenses.Where(x => x.UserId == _userId).OrderBy(x => x.Id);
+                var resultList = _dbContext.Expenses.Where(x => x.UserId == _userId).OrderBy(x => x.ExpenseId);
 
                 if (dateFrom != null)
                     resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CreatedAt >= dateFrom);
@@ -157,8 +179,12 @@ namespace ExpensesTrackerAPI.Controllers
                 if (dateTo != null)
                     resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CreatedAt <= dateTo);
 
+                if (category != null)
+                    resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CategoryId == category);
+
                 if (limit != null)
                     resultList = (IOrderedQueryable<Expense>)resultList.Take((int)limit);
+
 
                 return Ok(await resultList.ToListAsync());
             }
@@ -187,7 +213,7 @@ namespace ExpensesTrackerAPI.Controllers
 
                 if (isAdmin)
                 {
-                    var resultList = _dbContext.Expenses.OrderBy(x => x.Id);
+                    var resultList = _dbContext.Expenses.OrderBy(x => x.ExpenseId);
 
                     if (filterUserId != null)
                         resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.UserId == filterUserId);
@@ -197,6 +223,9 @@ namespace ExpensesTrackerAPI.Controllers
 
                     if (dateTo != null)
                         resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CreatedAt <= dateTo);
+
+                    if (category != null)
+                        resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CategoryId == category);
 
                     if (limit != null)
                         resultList = (IOrderedQueryable<Expense>)resultList.Take((int)limit);
@@ -230,7 +259,7 @@ namespace ExpensesTrackerAPI.Controllers
                 _userId = GetUserId();
                 //Admin users should be able to get any expense
                 bool isAdmin = await IsAdmin();
-                var expense = await _dbContext.Expenses.Where(x => x.Id == expenseId && (x.UserId == _userId || isAdmin)).FirstOrDefaultAsync();
+                var expense = await _dbContext.Expenses.Where(x => x.ExpenseId == expenseId && (x.UserId == _userId || isAdmin)).FirstOrDefaultAsync();
 
                 if (expense == null)
                 {
@@ -250,7 +279,7 @@ namespace ExpensesTrackerAPI.Controllers
 
         private async Task<bool> IsAdmin()
         {
-            return await _dbContext.Users.Where(x => x.Id == _userId && x.AccountType == (int)UserType.Administrator).AnyAsync();
+            return await _dbContext.Users.Where(x => x.UserId == _userId && x.AccountType == (int)UserType.Administrator).AnyAsync();
         }
         private int GetUserId()
         {

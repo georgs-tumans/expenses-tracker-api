@@ -113,7 +113,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
                             string token = _authService.CreateToken(user, _configuration.GetSection("AuthTokenKey").Value, type);
                             LoginResponse response = new LoginResponse
                             {
-                                Id = user.Id,
+                                Id = user.UserId,
                                 Username = user.Username,
                                 Email = user.Email,
                                 Name = user.Name,

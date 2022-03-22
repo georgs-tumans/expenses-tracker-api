@@ -41,7 +41,7 @@ namespace ExpensesTrackerAPI.Helpers
             List<Claim> claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.PrimarySid, user.Id.ToString()),
+                new Claim(ClaimTypes.PrimarySid, user.UserId.ToString()),
                 new Claim(ClaimTypes.Email, user.Email)
             };
 

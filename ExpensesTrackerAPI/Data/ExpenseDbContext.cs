@@ -10,5 +10,6 @@ namespace ExpensesTrackerAPI.Data
         public DbSet<ExpenseCategory> ExpensesCategories { get; set;}
         public DbSet<Weblog> Weblogs { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<UserToCategory> UserToCategory { get; set; }
     }
 }
