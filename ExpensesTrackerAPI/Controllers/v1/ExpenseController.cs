@@ -43,23 +43,8 @@ namespace ExpensesTrackerAPI.Controllers
             try
             {
                 _userId = GetUserId();
-                bool isAdmin = await IsAdmin();
-                bool found = false;
 
-                //Validate the category of the  expense
-                var cat = await _dbContext.ExpensesCategories.Where(x => x.CategoryId == request.CategoryId && x.Active == 1).FirstOrDefaultAsync();
-
-                if (cat is not null)
-                {
-                    //Check if this user has such a category (only for non-default ones). Admins can add expenses to any categories
-                    if (cat.IsDefault == 0 && !isAdmin) 
-                    {
-                        found = await _dbContext.UserToCategory.Where(x => x.UserId == _userId && x.CategoryId == cat.CategoryId).AnyAsync();
-                    }
-                    else found = true;
-                }
-
-                if (!found)
+                if (await ValidateCategory((int)request.CategoryId) == false)
                     return BadRequest("Such expense category does not exist");
 
                 var newExpense = new Expense
@@ -109,6 +94,9 @@ namespace ExpensesTrackerAPI.Controllers
                 } 
                 else
                 {
+                    if (await ValidateCategory((int)request.CategoryId) == false)
+                        return BadRequest("Such expense category does not exist");
+
                     dbExpense.Amount = (int)request.Amount; //won't be null because of automatic incoming object validation
                     dbExpense.Note = request.Description;
                     dbExpense.CategoryId = (int)request.CategoryId;
@@ -292,6 +280,26 @@ namespace ExpensesTrackerAPI.Controllers
                 throw new Exception("Failed to get user id from the auth token: " + ex.Message);
             }
             
+        }
+
+        private async Task<bool> ValidateCategory(int catId)
+        {
+            bool isAdmin = await IsAdmin();
+            bool found = false;
+
+            var cat = await _dbContext.ExpensesCategories.Where(x => x.CategoryId == catId && x.Active == 1).FirstOrDefaultAsync();
+
+            if (cat is not null)
+            {
+                //Check if this user has such a category (only for non-default ones). Admins can add expenses to any categories
+                if (cat.IsDefault == 0 && !isAdmin)
+                {
+                    found = await _dbContext.UserToCategory.Where(x => x.UserId == _userId && x.CategoryId == cat.CategoryId).AnyAsync();
+                }
+                else found = true;
+            }
+
+            return found;
         }
     }
 }

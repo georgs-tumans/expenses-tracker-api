@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using ExpensesTrackerAPI.Models.Requests;
 using ExpensesTrackerAPI.Models.Database;
 using System.Text.Json;
+using ExpensesTrackerAPI.Models.Responses;
 
 namespace ExpensesTrackerAPI.Controllers.v1
 {
@@ -77,8 +78,46 @@ namespace ExpensesTrackerAPI.Controllers.v1
             }
         }
 
+        [HttpGet]
+        [Authorize(Roles = "user,admin")]
+        [Route("api/v{version:apiVersion}/[controller]/GetAllUser")]
+        [ProducesResponseType(typeof(byte[]), (int)HttpStatusCode.OK)]
+        [SwaggerResponse(200, Description = "Ok")]
+        public async Task<ActionResult<List<GetAllUserCategoriesResponse>>> GetAll()
+        {
+            try
+            {
+                _userId = GetUserId();
+                List<GetAllUserCategoriesResponse> resultSet = new List<GetAllUserCategoriesResponse>();
 
-        private async Task<bool> IsAdmin()
+                //Selects all active user defined categories as well as all active default categories (since those are pre-made for every user)
+                resultSet = await _dbContext.ExpensesCategories.Where(x => x.Active == 1).Join(_dbContext.UserToCategory.Where(x => x.UserId == _userId),
+                                                                        category => category.CategoryId,
+                                                                        utc => utc.CategoryId,
+                                                                        (category, utc) => new GetAllUserCategoriesResponse
+                                                                        {
+                                                                            CategoryId = category.CategoryId,
+                                                                            Name = category.Name,
+                                                                            Description = category.Description,
+                                                                            Default = category.IsDefault
+                                                                        }).Union(_dbContext.ExpensesCategories.Where(x => x.IsDefault == 1 && x.Active == 1).Select(c => new GetAllUserCategoriesResponse {
+                                                                            CategoryId = c.CategoryId,
+                                                                            Name = c.Name,
+                                                                            Description = c.Description,
+                                                                            Default=c.IsDefault
+                                                                        })).ToListAsync();
+
+                return Ok(resultSet);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage($"[CategoryController.GetAll] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"userId: {_userId}");
+                return StatusCode((int)HttpStatusCode.InternalServerError);
+            }
+        }
+
+
+            private async Task<bool> IsAdmin()
         {
             return await _dbContext.Users.Where(x => x.UserId == _userId && x.AccountType == (int)UserType.Administrator).AnyAsync();
         }
