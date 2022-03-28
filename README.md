@@ -12,7 +12,7 @@ This will create all the necessary tables and constraints for the API.
 ### Useful Entity Framework commands
 - Add a new migration: `dotnet ef migrations add <name>`
 - Apply all code changes to database (run the existing migrations): `dotnet ef database update`
-- Remove a migration: `ef migrations remove <name>`
+- Remove the last migration: `ef migrations remove`
  
  
  
