@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net;
@@ -9,6 +8,7 @@ using ExpensesTrackerAPI.Models.Requests;
 using ExpensesTrackerAPI.Models.Database;
 using System.Text.Json;
 using ExpensesTrackerAPI.Models.Responses;
+using System.ComponentModel.DataAnnotations;
 
 namespace ExpensesTrackerAPI.Controllers.v1
 {
@@ -111,7 +111,6 @@ namespace ExpensesTrackerAPI.Controllers.v1
                 
                 dbCategory.Description = request.Description;
                 dbCategory.Name = request.Name;
-                dbCategory.Active = request.Active;
 
                 _dbContext.ExpensesCategories.Update(dbCategory);
                 await _dbContext.SaveChangesAsync();
@@ -232,6 +231,47 @@ namespace ExpensesTrackerAPI.Controllers.v1
             catch (Exception ex)
             {
                 _logger.LogMessage($"[CategoryController.GetAllAdmin] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"userId: {_userId}, IncludeDefault: {IncludeDefault}");
+                return StatusCode((int)HttpStatusCode.InternalServerError);
+            }
+        }
+
+        [HttpDelete]
+        [Route("api/v{version:apiVersion}/[controller]")]
+        [Authorize(Roles = "user,admin")]
+        [ProducesResponseType(typeof(byte[]), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(string), (int)HttpStatusCode.NotFound)]
+        [SwaggerResponse(200, Description = "Ok")]
+        [SwaggerResponse(404, Description = "Not found")]
+        public async Task<ActionResult> Delete([Required] int  categoryId)
+        {
+            try
+            {
+                _userId = GetUserId();
+                bool isAdmin = await IsAdmin();
+                var dbCategory = await _dbContext.ExpensesCategories.Where(x => x.CategoryId == categoryId).FirstOrDefaultAsync();
+                bool isEditable = await _dbContext.UserToCategory.Where(x => x.UserId == _userId && x.CategoryId == categoryId).AnyAsync() || isAdmin;  //Admin users should be able to delete any category
+
+                if (dbCategory is not null && dbCategory.IsDefault == 1 && !isAdmin)
+                {
+                    _logger.LogMessage("[CategoryController.Delete] Only administrators can delete default categories", (int)Helpers.LogLevel.Information, null, $"Category id: {categoryId}, userId: {_userId}");
+                    return BadRequest("Only administrators can delete default categories");
+                }
+
+                if (dbCategory is null || !isEditable)
+                {
+                    _logger.LogMessage("[CategoryController.Delete] Category not found", (int)Helpers.LogLevel.Information, null, $"Category id: {categoryId}, userId: {_userId}");
+                    return NotFound("Category not found");
+                }
+
+                dbCategory.Active = 0;
+                _dbContext.ExpensesCategories.Update(dbCategory);
+                await _dbContext.SaveChangesAsync();
+                return Ok();
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage($"[CategoryController.Delete] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"Category id: {categoryId}, userId: {_userId}");
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }

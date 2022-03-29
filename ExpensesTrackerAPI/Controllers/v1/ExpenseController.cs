@@ -154,7 +154,7 @@ namespace ExpensesTrackerAPI.Controllers
         [Route("api/v{version:apiVersion}/[controller]/GetAllUser")]
         [ProducesResponseType(typeof(byte[]), (int)HttpStatusCode.OK)]
         [SwaggerResponse(200, Description = "Ok")]
-        public async Task<ActionResult<List<Expense>>> GetAll(DateTime? dateFrom, DateTime? dateTo, int? category, int? limit)
+        public async Task<ActionResult<List<Expense>>> GetAll(DateTime? dateFrom, DateTime? dateTo, int? category)
         {
             try
             {
@@ -170,15 +170,12 @@ namespace ExpensesTrackerAPI.Controllers
                 if (category != null)
                     resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CategoryId == category);
 
-                if (limit != null)
-                    resultList = (IOrderedQueryable<Expense>)resultList.Take((int)limit);
-
 
                 return Ok(await resultList.ToListAsync());
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.GetAll] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, userId: {_userId}, category: {category}, limit: {limit}");
+                _logger.LogMessage($"[ExpenseController.GetAll] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, userId: {_userId}, category: {category}");
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
@@ -192,7 +189,7 @@ namespace ExpensesTrackerAPI.Controllers
         [ProducesResponseType(typeof(byte[]), (int)HttpStatusCode.Forbidden)]
         [SwaggerResponse(200, Description = "Ok")]
         [SwaggerResponse(403, Description = "Forbidden")]
-        public async Task<ActionResult<List<Expense>>> GetAllAdmin(DateTime? dateFrom, DateTime? dateTo, int? category, int? limit, int? filterUserId)
+        public async Task<ActionResult<List<Expense>>> GetAllAdmin(DateTime? dateFrom, DateTime? dateTo, int? category, int? filterUserId)
         {
             try
             {
@@ -215,9 +212,7 @@ namespace ExpensesTrackerAPI.Controllers
                     if (category != null)
                         resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CategoryId == category);
 
-                    if (limit != null)
-                        resultList = (IOrderedQueryable<Expense>)resultList.Take((int)limit);
-
+                  
                     return Ok(await resultList.ToListAsync());
                 }
 
@@ -227,7 +222,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.GetAllAdmin] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}, limit: {limit}, filterUserId: { filterUserId}, current userId: {_userId}");
+                _logger.LogMessage($"[ExpenseController.GetAllAdmin] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}, filterUserId: { filterUserId}, current userId: {_userId}");
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 

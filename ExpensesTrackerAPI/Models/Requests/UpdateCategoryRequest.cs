@@ -23,9 +23,5 @@ namespace ExpensesTrackerAPI.Models.Requests
         [StringLength(maximumLength: 2000, MinimumLength = 3)]
         [RegularExpression("^[a-zA-Z0-9](?:[a-zA-Z0-9.,'_ -]*[a-zA-Z0-9])?$", ErrorMessage = "Category description can only contain letters and numbers")]
         public string Description { get; set; } = string.Empty;
-        /// <summary>
-        /// Indicates whether a category should be shown to user
-        /// </summary>
-        public int Active { get; set; }
     }
 }
