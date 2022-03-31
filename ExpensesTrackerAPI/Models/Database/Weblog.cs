@@ -15,6 +15,7 @@ namespace ExpensesTrackerAPI.Models.Database
         public string? LogInfo1 { get; set;}
         public string? LogInfo2 { get; set;} 
         public string? StackTrace { get; set;}
+        public int? UserId { get; set; }
 
     }
 }

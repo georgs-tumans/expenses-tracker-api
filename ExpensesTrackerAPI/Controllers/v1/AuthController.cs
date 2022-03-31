@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net;
 using System.Net.Mail;
+using System.Text.Json;
 
 namespace ExpensesTrackerAPI.Controllers.v1
 {
@@ -39,19 +40,39 @@ namespace ExpensesTrackerAPI.Controllers.v1
             try
             {
                 if (!MailAddress.TryCreate(request.Email, out var email))
+                {
+                    _logger.LogMessage($"[AuthController.Register] Invalid email address", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
                     return BadRequest("Please enter a correct e-mail address");
+                }
+                    
               
                 if (!_authService.IsValidPassword(request.Password.Trim()))
+                {
+                    _logger.LogMessage($"[AuthController.Register] Password does not match requirements", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
                     return BadRequest("Password must contain at least one uppercase character, one number and one special character");
+                }
+                    
 
                 if (request.Password.Trim() != request.RepeatedPassword.Trim())
+                {
+                    _logger.LogMessage($"[AuthController.Register] Passwords do not match", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
                     return BadRequest("Passwords do not match");
+                }
+                    
 
                 if (_dbContext.Users.Where(x => x.Email == request.Email).Any())
+                {
+                    _logger.LogMessage($"[AuthController.Register] An account with the provided email already exists", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
                     return BadRequest("An account with this email already exists");
+                }
+                   
 
                 if (_dbContext.Users.Where(x => x.Username == request.UserName).Any())
+                {
+                    _logger.LogMessage($"[AuthController.Register] Username is taken", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
                     return BadRequest("This user name is already taken");
+                }
+                    
 
                 _authService.HashPassword(request.Password.Trim(), out byte[] passwordHash, out byte[] passwordSalt);
                 User user = new User()
@@ -71,13 +92,14 @@ namespace ExpensesTrackerAPI.Controllers.v1
 
                 _dbContext.Users.Add(user);
                 await _dbContext.SaveChangesAsync();
+                _logger.LogMessage($"[AuthController.Register] User created", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), $"New user id: {user.UserId}");
 
                 return Ok();
                 
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[AuthController.Register] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace);
+                _logger.LogMessage($"[AuthController.Register] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request));
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -97,13 +119,21 @@ namespace ExpensesTrackerAPI.Controllers.v1
             try
             {
                 if (String.IsNullOrEmpty(request.AuthString))
+                {
+                    _logger.LogMessage($"[AuthController.Login] Auth string not provided", (int)Helpers.LogLevel.Information, null, $"User: {request.AuthString}");
                     return BadRequest("Either e-mail or user name must be provided");
+                }
+                    
                 else
                 {
                     var user = _dbContext.Users.Where(x => (x.Username == request.AuthString.Trim() || x.Email == request.AuthString.Trim()) && x.Active == 1).FirstOrDefault();
                     
                     if (user is null)
+                    {
+                        _logger.LogMessage($"[AuthController.Login] User not found", (int)Helpers.LogLevel.Information, null, $"User: {request.AuthString}");
                         return NotFound("User not found");
+                    }
+                        
                     else
                     {
                         bool verified = _authService.VerifyPasswordHash(request.Password.Trim(), user.PasswordHash, user.PasswordSalt);
@@ -124,17 +154,22 @@ namespace ExpensesTrackerAPI.Controllers.v1
                                 JwtToken = token
                             };
 
+                            _logger.LogMessage($"[AuthController.Login] User logged in", (int)Helpers.LogLevel.Information, null, $"User: {request.AuthString}");
                             return Ok(response);
                         }
                         else
+                        {
+                            _logger.LogMessage($"[AuthController.Login] Invalid password", (int)Helpers.LogLevel.Information, null, $"User: {request.AuthString}");
                             return BadRequest("Incorrect password");
+                        }
+                            
                     }
                 }
 
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[AuthController.Login] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace);
+                _logger.LogMessage($"[AuthController.Login] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"User: {request.AuthString}");
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }

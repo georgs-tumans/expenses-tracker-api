@@ -46,7 +46,11 @@ namespace ExpensesTrackerAPI.Controllers.v1
                 bool isAdmin = await IsAdmin();
 
                 if (request.IsDefault is not null && request.IsDefault == 1 && !isAdmin)
+                {
+                    _logger.LogMessage($"[CategoryController.Add] Unauthorized attempt to add a default category", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
                     return BadRequest("Only administrators can add default categories");
+                }
+                    
 
                 var newCat = new ExpenseCategory
                 {
@@ -68,12 +72,13 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     });
                     await _dbContext.SaveChangesAsync();
                 }
-                
+
+                _logger.LogMessage($"[CategoryController.Add] New category added", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
                 return Ok(newCat.CategoryId);
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[CategoryController.Add] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), $"Current user id: {_userId}");
+                _logger.LogMessage($"[CategoryController.Add] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -85,7 +90,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.NotFound)]
         [SwaggerResponse(200, Description = "Ok")]
         [SwaggerResponse(404, Description = "Not found")]
-        public async Task<ActionResult> Update(UpdateCategoryRequest request)
+        public async Task<ActionResult<ExpenseCategory>> Update(UpdateCategoryRequest request)
         {
             try
             {
@@ -98,29 +103,31 @@ namespace ExpensesTrackerAPI.Controllers.v1
 
                 if (dbCategory is not null && dbCategory.IsDefault == 1 && !isAdmin)
                 {
-                    _logger.LogMessage("[CategoryController.Update] Only administrators can edit default categories", (int)Helpers.LogLevel.Information, null, $"id: {request.Id}, userId: {_userId}");
+                    _logger.LogMessage("[CategoryController.Update] Only administrators can edit default categories", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
                     return BadRequest("Only administrators can edit default categories");
                 }
 
                 if (dbCategory is null || !isEditable)
                 {
-                    _logger.LogMessage("[CategoryController.Update] Category not found", (int)Helpers.LogLevel.Information, null, $"id: {request.Id}, userId: {_userId}");
+                    _logger.LogMessage("[CategoryController.Update] Category not found", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
                     return NotFound("Category not found");
                 }
 
                 
-                dbCategory.Description = request.Description;
-                dbCategory.Name = request.Name;
+                dbCategory.Description = String.IsNullOrEmpty(request.Description) ? dbCategory.Description : request.Description;
+                dbCategory.Name = String.IsNullOrEmpty(request.Name) ? dbCategory.Name : request.Name;
 
                 _dbContext.ExpensesCategories.Update(dbCategory);
                 await _dbContext.SaveChangesAsync();
-                return Ok();
+                _logger.LogMessage($"[CategoryController.Update] Category {dbCategory.CategoryId} updated", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
+                
+                return Ok(dbCategory);
                 
 
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[CategoryController.Update] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), $"Current user id: {_userId}");
+                _logger.LogMessage($"[CategoryController.Update] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -155,11 +162,12 @@ namespace ExpensesTrackerAPI.Controllers.v1
                                                                             Default=c.IsDefault
                                                                         })).ToListAsync();
 
+                _logger.LogMessage($"[CategoryController.GetAll] User categories accessed", (int)Helpers.LogLevel.Information, null, null, null, _userId);
                 return Ok(resultSet);
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[CategoryController.GetAll] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"userId: {_userId}");
+                _logger.LogMessage($"[CategoryController.GetAll] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, null, null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -180,57 +188,61 @@ namespace ExpensesTrackerAPI.Controllers.v1
                 {
 
                     IEnumerable<GetAllUserCategoriesResponse> result;
-                    
 
                     if (UserId is not null && UserId != 0)
                     {
                         //Selects all active user defined categories as well as all active default categories (since those are pre-made for every user)
                         result = await (from cat in _dbContext.ExpensesCategories
-                                 join utc in _dbContext.UserToCategory on cat.CategoryId equals utc.CategoryId
-                                 where cat.Active == 1 && utc.UserId == UserId
-                                 select new GetAllUserCategoriesResponse
-                                 {
-                                     CategoryId = cat.CategoryId,
-                                     Name = cat.Name,
-                                     Description = cat.Description,
-                                     Default = cat.IsDefault
-                                 }).Union(_dbContext.ExpensesCategories.Where(x => x.IsDefault == 1).Select(c => new GetAllUserCategoriesResponse
-                                 {
-                                     CategoryId = c.CategoryId,
-                                     Name = c.Name,
-                                     Description = c.Description,
-                                     Default = c.IsDefault
-                                 })).ToListAsync();
+                                        join utc in _dbContext.UserToCategory on cat.CategoryId equals utc.CategoryId
+                                        where cat.Active == 1 && utc.UserId == UserId
+                                        select new GetAllUserCategoriesResponse
+                                        {
+                                            CategoryId = cat.CategoryId,
+                                            Name = cat.Name,
+                                            Description = cat.Description,
+                                            Default = cat.IsDefault
+                                        }).Union(_dbContext.ExpensesCategories.Where(x => x.IsDefault == 1).Select(c => new GetAllUserCategoriesResponse
+                                        {
+                                            CategoryId = c.CategoryId,
+                                            Name = c.Name,
+                                            Description = c.Description,
+                                            Default = c.IsDefault
+                                        })).ToListAsync();
                     }
                     else
                     {
                         //Select all active categories of all users
                         result = await (from cat in _dbContext.ExpensesCategories
-                                 where cat.Active == 1
-                                 select new GetAllUserCategoriesResponse
-                                 {
-                                     CategoryId = cat.CategoryId,
-                                     Name = cat.Name,
-                                     Description = cat.Description,
-                                     Default = cat.IsDefault
-                                 }).ToListAsync();
+                                        where cat.Active == 1
+                                        select new GetAllUserCategoriesResponse
+                                        {
+                                            CategoryId = cat.CategoryId,
+                                            Name = cat.Name,
+                                            Description = cat.Description,
+                                            Default = cat.IsDefault
+                                        }).ToListAsync();
                     }
-                    
+
 
                     if (IncludeDefault == 0)
                     {
                         result = result.Where(x => x.Default == 0).ToList();
                     }
 
+                    _logger.LogMessage($"[CategoryController.GetAllAdmin] Categories accessed", (int)Helpers.LogLevel.Information, null, $"userId: {UserId}, IncludeDefault: {IncludeDefault}", null, _userId);
                     return Ok(result);
                 }
 
-                else return StatusCode((int)HttpStatusCode.Forbidden);
+                else
+                {
+                    _logger.LogMessage($"[CategoryController.GetAllAdmin] Unauthorized attempt to access categories", (int)Helpers.LogLevel.Information, null, $"userId: {UserId}, IncludeDefault: {IncludeDefault}", null, _userId);
+                    return StatusCode((int)HttpStatusCode.Forbidden);
+                }
 
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[CategoryController.GetAllAdmin] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"userId: {_userId}, IncludeDefault: {IncludeDefault}");
+                _logger.LogMessage($"[CategoryController.GetAllAdmin] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"userId: {UserId}, IncludeDefault: {IncludeDefault}", null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -253,25 +265,26 @@ namespace ExpensesTrackerAPI.Controllers.v1
 
                 if (dbCategory is not null && dbCategory.IsDefault == 1 && !isAdmin)
                 {
-                    _logger.LogMessage("[CategoryController.Delete] Only administrators can delete default categories", (int)Helpers.LogLevel.Information, null, $"Category id: {categoryId}, userId: {_userId}");
+                    _logger.LogMessage("[CategoryController.Delete] Only administrators can delete default categories", (int)Helpers.LogLevel.Information, null, $"Category id: {categoryId}", null, _userId);
                     return BadRequest("Only administrators can delete default categories");
                 }
 
                 if (dbCategory is null || !isEditable)
                 {
-                    _logger.LogMessage("[CategoryController.Delete] Category not found", (int)Helpers.LogLevel.Information, null, $"Category id: {categoryId}, userId: {_userId}");
+                    _logger.LogMessage("[CategoryController.Delete] Category not found", (int)Helpers.LogLevel.Information, null, $"Category id: {categoryId}", null, _userId);
                     return NotFound("Category not found");
                 }
 
                 dbCategory.Active = 0;
                 _dbContext.ExpensesCategories.Update(dbCategory);
                 await _dbContext.SaveChangesAsync();
+                _logger.LogMessage("[CategoryController.Delete] Category deleted", (int)Helpers.LogLevel.Information, null, $"Category id: {categoryId}",  null, _userId);
                 return Ok();
 
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[CategoryController.Delete] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"Category id: {categoryId}, userId: {_userId}");
+                _logger.LogMessage($"[CategoryController.Delete] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"Category id: {categoryId}", null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }

@@ -45,7 +45,10 @@ namespace ExpensesTrackerAPI.Controllers
                 _userId = GetUserId();
 
                 if (await ValidateCategory((int)request.CategoryId) == false)
+                {
+                    _logger.LogMessage("[ExpenseController.Add] Expense category not found", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
                     return BadRequest("Such expense category does not exist");
+                }
 
                 var newExpense = new Expense
                 {
@@ -58,6 +61,7 @@ namespace ExpensesTrackerAPI.Controllers
 
                 _dbContext.Expenses.Add(newExpense);
                 await _dbContext.SaveChangesAsync();
+                _logger.LogMessage("[ExpenseController.Add] Expense added", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
 
                 return Ok(new AddExpenseResponse
                 {
@@ -66,7 +70,7 @@ namespace ExpensesTrackerAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.Add] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), $"Current user id: {_userId}");
+                _logger.LogMessage($"[ExpenseController.Add] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -78,7 +82,7 @@ namespace ExpensesTrackerAPI.Controllers
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.NotFound)]
         [SwaggerResponse(200, Description = "Ok")]
         [SwaggerResponse(404, Description = "Not found")]
-        public async Task<ActionResult> Update(UpdateExpenseRequest request)
+        public async Task<ActionResult<Expense>> Update(UpdateExpenseRequest request)
         {
             try
             {
@@ -89,26 +93,31 @@ namespace ExpensesTrackerAPI.Controllers
 
                 if (dbExpense == null)
                 {
-                    _logger.LogMessage("[ExpenseController.Update] Expense not found", (int)Helpers.LogLevel.Information, null, $"id: {request.Id}, userId: {_userId}");
+                    _logger.LogMessage("[ExpenseController.Update] Expense not found", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
                     return NotFound("Expense not found or you have no access to it");
                 } 
                 else
                 {
-                    if (await ValidateCategory((int)request.CategoryId) == false)
+                    if (request.CategoryId is not null && await ValidateCategory((int)request.CategoryId) == false)
+                    {
+                        _logger.LogMessage("[ExpenseController.Update] Expense category not found", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
                         return BadRequest("Such expense category does not exist");
-
-                    dbExpense.Amount = (int)request.Amount; //won't be null because of automatic incoming object validation
-                    dbExpense.Note = request.Description;
-                    dbExpense.CategoryId = (int)request.CategoryId;
+                    }
+                        
+                    dbExpense.Amount = request.Amount is null || request.Amount == 0 ? dbExpense.Amount : (int)request.Amount;
+                    dbExpense.Note = String.IsNullOrEmpty(request.Description) ? dbExpense.Note : request.Description;
+                    dbExpense.CategoryId = (int)request.CategoryId; //won't be null because prior checks make sure of that
                     _dbContext.Expenses.Update(dbExpense);
                     await _dbContext.SaveChangesAsync();
-                    return Ok();
+                    _logger.LogMessage("[ExpenseController.Update] Expense udpated", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
+                    
+                    return Ok(dbExpense);
                 }
                 
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.Update] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), $"Current user id: {_userId}");
+                _logger.LogMessage($"[ExpenseController.Update] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -131,20 +140,21 @@ namespace ExpensesTrackerAPI.Controllers
 
                 if (dbExpense == null)
                 {
-                    _logger.LogMessage("[ExpenseController.Delete] Expense not found", (int)Helpers.LogLevel.Information, null, $"expenseId: {expenseId}, userId: {_userId}");
+                    _logger.LogMessage($"[ExpenseController.Delete] Expense {expenseId} not found", (int)Helpers.LogLevel.Information, null, null, null, _userId);
                     return NotFound("Expense not found or you have no access to it");
                 } 
                 else
                 {
                     _dbContext.Expenses.Remove(dbExpense);
                     await _dbContext.SaveChangesAsync();
+                    _logger.LogMessage($"[ExpenseController.Delete] Expense {expenseId} deleted", (int)Helpers.LogLevel.Information, null, null, null, _userId);
                     return Ok();
                 }
 
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.Delete] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"expenseId: {expenseId}, userId: {_userId}");
+                _logger.LogMessage($"[ExpenseController.Delete] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"expenseId: {expenseId}", null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
@@ -171,11 +181,13 @@ namespace ExpensesTrackerAPI.Controllers
                     resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CategoryId == category);
 
 
+                _logger.LogMessage($"[ExpenseController.GetAll] User expenses accessed", (int)Helpers.LogLevel.Information, null, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}", null, _userId);
                 return Ok(await resultList.ToListAsync());
+                
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.GetAll] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, userId: {_userId}, category: {category}");
+                _logger.LogMessage($"[ExpenseController.GetAll] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}", null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
@@ -212,17 +224,21 @@ namespace ExpensesTrackerAPI.Controllers
                     if (category != null)
                         resultList = (IOrderedQueryable<Expense>)resultList.Where(x => x.CategoryId == category);
 
-                  
+                    _logger.LogMessage($"[ExpenseController.GetAllAdmin] Expenses accessed", (int)Helpers.LogLevel.Information, null, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}, filterUserId: { filterUserId}", null, _userId);
                     return Ok(await resultList.ToListAsync());
                 }
 
-                else return StatusCode((int)HttpStatusCode.Forbidden);
+                else
+                {
+                    _logger.LogMessage($"[ExpenseController.GetAllAdmin] Unauthorized attempt to access expenses", (int)Helpers.LogLevel.Information, null, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}, filterUserId: { filterUserId}", null, _userId);
+                    return StatusCode((int)HttpStatusCode.Forbidden);
+                }
 
 
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.GetAllAdmin] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}, filterUserId: { filterUserId}, current userId: {_userId}");
+                _logger.LogMessage($"[ExpenseController.GetAllAdmin] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}, filterUserId: { filterUserId}", null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
@@ -246,15 +262,19 @@ namespace ExpensesTrackerAPI.Controllers
 
                 if (expense == null)
                 {
-                    _logger.LogMessage("[ExpenseController.Get] Expense not found", (int)Helpers.LogLevel.Information, null, $"userId: {_userId}, epenseId: {expenseId}");
+                    _logger.LogMessage($"[ExpenseController.Get] Expense {expenseId} not found", (int)Helpers.LogLevel.Information, null, null, null, _userId);
                     return NotFound("Expense not found or you have no access to it");
                 }
                 else
+                {
+                    _logger.LogMessage($"[ExpenseController.Get] Expense {expenseId} accessed", (int)Helpers.LogLevel.Information, null, null, null, _userId);
                     return Ok(expense);
+                }
+                    
             }
             catch (Exception ex)
             {
-                _logger.LogMessage($"[ExpenseController.Get] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"userId: {_userId}, epenseId: {expenseId}");
+                _logger.LogMessage($"[ExpenseController.Get] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"epenseId: {expenseId}", null, _userId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
 
@@ -281,6 +301,9 @@ namespace ExpensesTrackerAPI.Controllers
         {
             bool isAdmin = await IsAdmin();
             bool found = false;
+
+            if (catId == 0)
+                return found;
 
             var cat = await _dbContext.ExpensesCategories.Where(x => x.CategoryId == catId && x.Active == 1).FirstOrDefaultAsync();
 

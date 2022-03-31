@@ -12,7 +12,7 @@ namespace ExpensesTrackerAPI.Helpers
             _logger = logger;
         }
 
-        public void LogMessage(string msg, int level, string? stackTrace = null, string? info1 = null, string? info2 = null)
+        public void LogMessage(string msg, int level, string? stackTrace = null, string? info1 = null, string? info2 = null, int? userId = null)
         {
             try
             {
@@ -23,7 +23,8 @@ namespace ExpensesTrackerAPI.Helpers
                     LogInfo1 = info1,
                     LogInfo2 = info2,
                     StackTrace = stackTrace,
-                    LogTime = DateTime.UtcNow
+                    LogTime = DateTime.UtcNow,
+                    UserId = userId
                 });
 
                 _dbContext.SaveChanges();

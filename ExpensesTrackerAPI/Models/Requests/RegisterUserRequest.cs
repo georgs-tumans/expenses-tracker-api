@@ -5,7 +5,7 @@ namespace ExpensesTrackerAPI.Models.Requests
     public class RegisterUserRequest
     {
         [Required]
-        [RegularExpression("^[a-zA-Z0-9](?:[a-zA-Z0-9.,'_ -]*[a-zA-Z0-9])?$", ErrorMessage = "User name can only contain letters and numbers")]
+        [RegularExpression("^[a-zA-Z0-9](?:[a-zA-Z0-9.,'_ -]*[a-zA-Z0-9])?$", ErrorMessage = "Username can only contain letters and numbers")]
         [StringLength(maximumLength: 15, MinimumLength = 2)]
         public string UserName { get; set; } = string.Empty;
         [Required]
