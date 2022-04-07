@@ -24,5 +24,7 @@ namespace ExpensesTrackerAPI.Models.Database
         public int AccountType { get; set; } = (int)UserType.User;
         [Required]
         public DateTime RegistrationDate { get; set; }
+        public string? EmailConfirmationToken { get; set; }
+        public DateTime? EmailConfirmationTokenRegistration { get; set; }
     }
 }

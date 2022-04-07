@@ -1,14 +1,25 @@
 ﻿using ExpensesTrackerAPI.Models.Database;
+using MailKit.Net.Smtp;
 using Microsoft.IdentityModel.Tokens;
+using MimeKit;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace ExpensesTrackerAPI.Helpers
 {
     public class AuthService : IAuthService
     {
+
+        private readonly IConfiguration _configuration;
+
+        public AuthService(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+        
         public void HashPassword(string password, out byte[] passwordHash, out byte[] passwordSalt)
         {
             using (var hmac = new HMACSHA512())
@@ -54,6 +65,36 @@ namespace ExpensesTrackerAPI.Helpers
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
 
             return jwt;
+        }
+
+        public void SendConfirmationEmail(string confirmationToken, string confirmationLink, User user)
+        {
+            string senderEmail = _configuration.GetSection("SendingEmail").GetSection("SenderAddress").Value;
+            string smtpServer = _configuration.GetSection("SendingEmail").GetSection("SmtpServer").Value;
+            int smtpPort = Convert.ToInt32(_configuration.GetSection("SendingEmail").GetSection("SmtpPort").Value);
+            string senderLoginPass = _configuration.GetSection("SendingEmail").GetSection("SenderLoginPassword").Value;
+
+            StringBuilder text = new StringBuilder();
+            text.Append("Hello!").Append(Environment.NewLine).Append("To activate your Expenses Tracker API account, please click on the following link:").Append(Environment.NewLine);
+            text.Append(confirmationLink).Append(Environment.NewLine).Append(Environment.NewLine);
+            text.Append($"The link expires in {Convert.ToInt32(_configuration.GetSection("TokenExpirationHours").Value)} hours.");
+
+            var mailMessage = new MimeMessage();
+            mailMessage.From.Add(new MailboxAddress("Expense Tracking API", senderEmail));
+            mailMessage.To.Add(new MailboxAddress(user.Name is null ? "User" : user.Name, user.Email));
+            mailMessage.Subject = "Account confirmation";
+            mailMessage.Body = new TextPart("plain")
+            {
+                Text = text.ToString()
+            };
+
+            using (var smtpClient = new SmtpClient())
+            {
+                smtpClient.Connect(smtpServer, smtpPort, true);
+                smtpClient.Authenticate(senderEmail, senderLoginPass);
+                smtpClient.Send(mailMessage);
+                smtpClient.Disconnect(true);
+            }
         }
     }
 }
