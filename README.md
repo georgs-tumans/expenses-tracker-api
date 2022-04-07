@@ -13,6 +13,9 @@ Two user types have been implemented. New user registration and login endpoints 
 #### Authorization
 All endpoints are only accessible when authentificated as a registered user. To authentificate, the Login endpoint should be called which then returns a bearer token that must then be passed with every request. Token lifespan is two hours.
 
+#### New user account activation
+All new accounts registered must first be activated before logging in. This API includes account activation via a link sent to user email after account registration. The link calls an endpoint of the API which then redirects to an arbitrary link (two different redirects can be used for successful or failed account activation).
+
 #### Logging
 All operations and exceptions are logged to the database table `Weblogs`.
 
@@ -42,7 +45,16 @@ In order to run the project, an appsettings.json should have the following struc
   "ConnectionStrings": {
     "local": ""       //Connection string for a local PostgreSQL server
   },
-  "AuthTokenKey": "" //Any generated token string that is used for generating auth tokens
+  "AuthTokenKey": "", //Any generated token string that is used for generating auth tokens
+  "EmailConfirmSuccessUrl": "", //Url for redirection after a successful account activation
+  "EmailConfirmFailUrl": "", //Url for redirection after a failed account activation
+  "TokenExpirationHours": , //Sets the expiration time of the account activation token (in hours)
+  "SendingEmail": {
+    "SmtpServer": "",
+    "SmtpPort": ,
+    "SenderAddress": "",  //The full email address of the user used for sending email
+    "SenderLoginPassword": "" //Password of the sender account
+  }
 }
 ```
  ### Working with the Entity Framework
