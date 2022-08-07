@@ -7,11 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Models\RegisterUserRequestcs" />
+    <None Remove="V1_0\Models\RegisterUserRequestcs" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Models\Requests\RegisterUserRequest.cs" />
+    <None Include="V1_0\Models\Requests\RegisterUserRequest.cs" />
   </ItemGroup>
 
   <ItemGroup>
