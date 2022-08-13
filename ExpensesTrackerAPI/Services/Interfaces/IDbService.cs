@@ -26,5 +26,19 @@ namespace ExpensesTrackerAPI.Services
         /// <param name="entity">The item to update</param>
         /// <returns></returns>
         public void Update<TEntity>(TEntity entity) where TEntity : class;
+
+        /// <summary>
+        /// Adds a new database entry
+        /// </summary>
+        /// <param name="entity">The item to add</param>
+        /// <returns></returns>
+        public void Add<TEntity>(TEntity entity) where TEntity : class;
+
+        /// <summary>
+        /// Deletes a database entry
+        /// </summary>
+        /// <param name="entity">The item to delete</param>
+        /// <returns></returns>
+        public void Delete<TEntity>(TEntity entity) where TEntity : class;
     }
 }

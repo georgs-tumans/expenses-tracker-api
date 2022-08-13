@@ -1,6 +1,5 @@
 ﻿using ExpensesTrackerAPI.Providers;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace ExpensesTrackerAPI.V1_0.Controllers
@@ -10,8 +9,9 @@ namespace ExpensesTrackerAPI.V1_0.Controllers
     /// </summary>
     public abstract class ApiControllerBase : ControllerBase
     {
-        private readonly UserProvider _userProvider;
-        protected readonly DbContext _dbContext;
+        protected readonly UserProvider _userProvider;
+        protected readonly ControllerHelper _controllerHelper;
+
         /// <summary>
         /// ID of the currently logged-in user
         /// </summary>
@@ -21,10 +21,10 @@ namespace ExpensesTrackerAPI.V1_0.Controllers
         /// </summary>
         protected bool IsAdmin { get => GetIsAdmin(); }
 
-        public ApiControllerBase(DbContext context)
+        public ApiControllerBase(UserProvider userProvider, ControllerHelper controllerHelper)
         {
-            _dbContext = context;
-            _userProvider = new UserProvider(context);
+            _userProvider = userProvider;
+            _controllerHelper = controllerHelper;
         }
 
         /// <summary>

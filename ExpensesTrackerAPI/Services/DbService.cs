@@ -19,7 +19,7 @@ namespace ExpensesTrackerAPI.Services
             }
             catch(Exception ex)
             {
-                throw new ArgumentException($"Error querying the {typeof(TEntity)} entity - {ex.Message}", ex.ToString());
+                throw new ArgumentException($"[DbService.GetByCondition] Error querying the {typeof(TEntity)} entity - {ex.Message}", ex.ToString());
             }
             
         }
@@ -32,7 +32,7 @@ namespace ExpensesTrackerAPI.Services
             }
             catch (Exception ex)
             {
-                throw new ArgumentException($"Error querying the {typeof(TEntity)} entity - {ex.Message}", ex.ToString());
+                throw new ArgumentException($"[DbService.GetAll] Error querying the {typeof(TEntity)} entity - {ex.Message}", ex.ToString());
             }
 
         }
@@ -45,7 +45,31 @@ namespace ExpensesTrackerAPI.Services
             }
             catch (Exception ex)
             {
-                throw new ArgumentException($"Error querying the {typeof(TEntity)} entity - {ex.Message}", ex.ToString());
+                throw new ArgumentException($"[DbService.Update] Error updating the {typeof(TEntity)} entity - {ex.Message}", ex.ToString());
+            }
+        }
+
+        public void Add<TEntity>(TEntity entity) where TEntity : class
+        {
+            try
+            {
+                _dbContext.Set<TEntity>().Add(entity);
+            }
+            catch (Exception ex)
+            {
+                throw new ArgumentException($"[DbService.Add] Error adding a new {typeof(TEntity)} entity - {ex.Message}", ex.ToString());
+            }
+        }
+
+        public void Delete<TEntity>(TEntity entity) where TEntity : class
+        {
+            try
+            {
+                _dbContext.Set<TEntity>().Remove(entity);
+            }
+            catch (Exception ex)
+            {
+                throw new ArgumentException($"[DbService.Delete] Error deleteing a {typeof(TEntity)} entity - {ex.Message}", ex.ToString());
             }
         }
     }

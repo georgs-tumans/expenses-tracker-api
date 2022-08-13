@@ -2,15 +2,12 @@
 using ExpensesTrackerAPI.Models.Requests;
 using ExpensesTrackerAPI.Models.Responses;
 using ExpensesTrackerAPI.Providers;
-using ExpensesTrackerAPI.Services;
 using ExpensesTrackerAPI.V1_0.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
 using System.ComponentModel.DataAnnotations;
 using System.Net;
-using System.Net.Mail;
 using System.Text.Json;
 
 namespace ExpensesTrackerAPI.Controllers.v1
@@ -24,12 +21,10 @@ namespace ExpensesTrackerAPI.Controllers.v1
     public class UsersController : ApiControllerBase
     {
         private readonly IWeblogService _logger;
-        private readonly UserProvider _userProvider;
 
-        public UsersController(IWeblogService logger, ExpenseDbContext context) : base(context)
+        public UsersController(IWeblogService logger, ExpenseDbContext context) : base(new UserProvider(context), new ControllerHelper(context))
         {
             _logger = logger;
-            _userProvider = new UserProvider(context);
         }
 
         [HttpGet]
@@ -155,22 +150,16 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     return StatusCode((int)HttpStatusCode.Forbidden);
                 }
 
-                User user = await _userProvider.GetOnlyActiveUserAsync(userToDelete);
-
-                if (user is null)
-                {
-                    _logger.LogMessage($"[UsersController.Delete] User {userToDelete} not found", (int)Helpers.LogLevel.Information, null, null, null, UserId);
-                    return NotFound("User not found");
-                }
-                    
-                else
-                {
-                    user.Active = 0;
-                    await _userProvider.UpdateUserAsync(user);
-                    _logger.LogMessage($"[UsersController.Delete] User {userToDelete} deleted", (int)Helpers.LogLevel.Information, null, null, null, UserId);
-                    return Ok();
-                }
-
+               await _userProvider.DeactivateUser(userToDelete);
+                  
+                _logger.LogMessage($"[UsersController.Delete] User {userToDelete} deleted", (int)Helpers.LogLevel.Information, null, null, null, UserId);
+                return Ok();
+                
+            }
+            catch (ArgumentNullException ex)
+            {
+                _logger.LogMessage($"[UsersController.DeleteUser] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"userId: {userId}", null, UserId);
+                return NotFound("User not found");
             }
             catch (Exception ex)
             {
@@ -190,51 +179,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
         {
             try
             {
-                //All users can update only their own data, admins have no special privileges to change any user data
-                User user = await _userProvider.GetOnlyActiveUserAsync(UserId);
-
-                if (user is null)
-                {
-                    _logger.LogMessage($"[UsersController.Update] User {UserId} not found", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, UserId);
-                    return NotFound("User not found");
-                }
-                   
-                if (!String.IsNullOrEmpty(request.Email))
-                {
-                    if (!MailAddress.TryCreate(request.Email, out var email))
-                    {
-                        _logger.LogMessage($"[UsersController.Update] Invalid e-mail address provided", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, UserId);
-                        return BadRequest("Please enter a correct e-mail address");
-                    }
-                        
-                    if (await _userProvider.GetUserByEmailAsync(request.Email) is not null)
-                    {
-                        _logger.LogMessage($"[UsersController.Update] An account with the provided email already exists", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, UserId);
-                        return BadRequest("An account with this email already exists");
-                    }
-                        
-
-                    user.Email = request.Email;
-                }
-                
-                if (!String.IsNullOrEmpty(request.Username))
-                {
-                    if (await _userProvider.GetUserByUsernameAsync(request.Username) is not null)
-                    {
-                        _logger.LogMessage($"[UsersController.Update] Username is taken", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, UserId);
-                        return BadRequest("This user name is already taken");
-                    }
-                        
-                    user.Username = request.Username;
-
-                } 
-
-                user.Surname = String.IsNullOrEmpty(request.Surname) ? user.Surname : request.Surname;
-                user.Name = String.IsNullOrEmpty(request.Name) ? user.Name : request.Name;
-                user.PhoneNumber = String.IsNullOrEmpty(request.PhoneNumber) ? user.PhoneNumber : request.PhoneNumber;
-
-                await _userProvider.UpdateUserAsync(user);
-                _logger.LogMessage($"[UsersController.Update] User data update performed", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, UserId);
+                var user = await _userProvider.UpdateUserAsync(request, UserId);
                 
                 return Ok(new GetUserResponse
                 {
@@ -249,7 +194,16 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     Username = user.Username
                 });
               
-
+            }
+            catch (ArgumentNullException ex)
+            {
+                _logger.LogMessage($"[UsersController.Update] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), null, UserId);
+                return NotFound("User not found");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogMessage($"[UsersController.Update] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, JsonSerializer.Serialize(request), null, UserId);
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -265,30 +219,24 @@ namespace ExpensesTrackerAPI.Controllers.v1
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.NotFound)]
         [SwaggerResponse(200, Description = "Ok")]
         [SwaggerResponse(404, Description = "Not found")]
-        public async Task<ActionResult> ChangeAccountType([Required] int userId, UserType accType)
+        public async Task<ActionResult> ChangeAccountType([Required] int userId, [Required] UserType accType)
         {
             try
             {
                 if (!IsAdmin)
-                {
                     return StatusCode((int)HttpStatusCode.Forbidden);
-                }
+                
 
-                User user = await _userProvider.GetOnlyActiveUserAsync(userId);
-
-                if (user is null)
-                {
-                    _logger.LogMessage($"[UsersController.ChangeAccountType] User {userId} not found", (int)Helpers.LogLevel.Information, null, $"userId:  {userId}, accType: {accType}", null, UserId);
-                    return NotFound("User not found");
-                }
-                  
-                user.AccountType = (int)accType;
-                await _userProvider.UpdateUserAsync(user);
+                await _userProvider.ChangeUserAccountType(userId, accType);
                 _logger.LogMessage($"[UsersController.ChangeAccountType] User {userId} account type changed", (int)Helpers.LogLevel.Information, null, $"userId: {userId}, accType: {(int)accType}", null, UserId);
 
                 return Ok();
 
-
+            }
+            catch (ArgumentNullException ex)
+            {
+                _logger.LogMessage($"[UsersController.ChangeAccountType] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"userId:  {userId}, accType: {accType}", null, UserId);
+                return NotFound("User not found");
             }
             catch (Exception ex)
             {
