@@ -50,7 +50,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     _logger.LogMessage($"[CategoryController.Add] Unauthorized attempt to add a default category", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
                     return BadRequest("Only administrators can add default categories");
                 }
-                    
+
 
                 var newCat = new ExpenseCategory
                 {
@@ -113,16 +113,16 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     return NotFound("Category not found");
                 }
 
-                
+
                 dbCategory.Description = String.IsNullOrEmpty(request.Description) ? dbCategory.Description : request.Description;
                 dbCategory.Name = String.IsNullOrEmpty(request.Name) ? dbCategory.Name : request.Name;
 
                 _dbContext.ExpensesCategories.Update(dbCategory);
                 await _dbContext.SaveChangesAsync();
                 _logger.LogMessage($"[CategoryController.Update] Category {dbCategory.CategoryId} updated", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, _userId);
-                
+
                 return Ok(dbCategory);
-                
+
 
             }
             catch (Exception ex)
@@ -155,11 +155,12 @@ namespace ExpensesTrackerAPI.Controllers.v1
                                                                             Name = category.Name,
                                                                             Description = category.Description,
                                                                             Default = category.IsDefault
-                                                                        }).Union(_dbContext.ExpensesCategories.Where(x => x.IsDefault == 1 && x.Active == 1).Select(c => new GetAllUserCategoriesResponse {
+                                                                        }).Union(_dbContext.ExpensesCategories.Where(x => x.IsDefault == 1 && x.Active == 1).Select(c => new GetAllUserCategoriesResponse
+                                                                        {
                                                                             CategoryId = c.CategoryId,
                                                                             Name = c.Name,
                                                                             Description = c.Description,
-                                                                            Default=c.IsDefault
+                                                                            Default = c.IsDefault
                                                                         })).ToListAsync();
 
                 _logger.LogMessage($"[CategoryController.GetAll] User categories accessed", (int)Helpers.LogLevel.Information, null, null, null, _userId);
@@ -254,7 +255,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.NotFound)]
         [SwaggerResponse(200, Description = "Ok")]
         [SwaggerResponse(404, Description = "Not found")]
-        public async Task<ActionResult> Delete([Required] int  categoryId)
+        public async Task<ActionResult> Delete([Required] int categoryId)
         {
             try
             {
@@ -278,7 +279,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
                 dbCategory.Active = 0;
                 _dbContext.ExpensesCategories.Update(dbCategory);
                 await _dbContext.SaveChangesAsync();
-                _logger.LogMessage("[CategoryController.Delete] Category deleted", (int)Helpers.LogLevel.Information, null, $"Category id: {categoryId}",  null, _userId);
+                _logger.LogMessage("[CategoryController.Delete] Category deleted", (int)Helpers.LogLevel.Information, null, $"Category id: {categoryId}", null, _userId);
                 return Ok();
 
             }

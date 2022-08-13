@@ -19,7 +19,7 @@ namespace ExpensesTrackerAPI.Helpers
         {
             _configuration = configuration;
         }
-        
+
         public void HashPassword(string password, out byte[] passwordHash, out byte[] passwordSalt)
         {
             using (var hmac = new HMACSHA512())

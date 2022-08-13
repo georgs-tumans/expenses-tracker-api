@@ -12,7 +12,7 @@ namespace ExpensesTrackerAPI.Providers
     {
         public ExpenseProvider(DbContext context) : base(context) { }
 
-#region GetMethods
+        #region GetMethods
         /// <summary>
         /// Adds a new expense item to the database
         /// </summary>
@@ -34,7 +34,7 @@ namespace ExpensesTrackerAPI.Providers
         /// <returns>A list of expenses</returns>
         public async Task<List<Expense>> GetAllUserExpenses(int userId, DateTime? dateFrom, DateTime? dateTo, int? category)
         {
-            
+
             var resultList = _dbService.GetByCondition<Expense>(x => x.UserId == userId).OrderBy(x => x.ExpenseId);
 
             var filteredList = FilterExpenseList(resultList, dateFrom, dateTo, category);
@@ -59,7 +59,7 @@ namespace ExpensesTrackerAPI.Providers
             return await filteredList.ToListAsync();
         }
 
-#endregion GetMethods
+        #endregion GetMethods
 
         /// <summary>
         /// Adds a new expense item to the database
@@ -99,7 +99,7 @@ namespace ExpensesTrackerAPI.Providers
 
             userEpense.Amount = request.Amount is null || request.Amount == 0 ? userEpense.Amount : (int)request.Amount;
             userEpense.Note = String.IsNullOrEmpty(request.Description) ? userEpense.Note : request.Description;
-            userEpense.CategoryId = (int)request.CategoryId; 
+            userEpense.CategoryId = (int)request.CategoryId;
 
             _dbService.Update<Expense>(userEpense);
             await _dbContext.SaveChangesAsync();
@@ -126,7 +126,7 @@ namespace ExpensesTrackerAPI.Providers
 
         private IQueryable<Expense> FilterExpenseList(IQueryable<Expense> expenseList, DateTime? dateFrom, DateTime? dateTo, int? category)
         {
-            
+
             if (dateFrom != null)
                 expenseList = (IOrderedQueryable<Expense>)expenseList.Where(x => x.CreatedAt >= dateFrom.SetKindUtc());
 

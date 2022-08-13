@@ -28,7 +28,7 @@ namespace ExpensesTrackerAPI.Controllers
         {
             _logger = logger;
             _expenseProvider = new ExpenseProvider(context);
-            
+
         }
 
         [HttpPost]
@@ -49,7 +49,7 @@ namespace ExpensesTrackerAPI.Controllers
                 }
 
                 int newExpenseId = await _expenseProvider.AddNewExpense(request, UserId);
-                
+
                 _logger.LogMessage("[ExpenseController.Add] Expense added", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, UserId);
 
                 return Ok(new AddExpenseResponse
@@ -80,12 +80,12 @@ namespace ExpensesTrackerAPI.Controllers
                     _logger.LogMessage("[ExpenseController.Update] Expense category not found", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, UserId);
                     return BadRequest("Such expense category does not exist");
                 }
-                
+
                 var updatedExpense = await _expenseProvider.UpdateExpense(request, UserId, IsAdmin);
                 _logger.LogMessage("[ExpenseController.Update] Expense udpated", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), null, UserId);
-                    
+
                 return Ok(updatedExpense);
-                
+
             }
             catch (ArgumentNullException ex)
             {
@@ -114,7 +114,7 @@ namespace ExpensesTrackerAPI.Controllers
                 _logger.LogMessage($"[ExpenseController.Delete] Expense {expenseId} deleted", (int)Helpers.LogLevel.Information, null, null, null, UserId);
 
                 return Ok();
-                
+
             }
             catch (ArgumentNullException ex)
             {
@@ -141,7 +141,7 @@ namespace ExpensesTrackerAPI.Controllers
 
                 _logger.LogMessage($"[ExpenseController.GetAll] User expenses accessed", (int)Helpers.LogLevel.Information, null, $"dateFrom: {dateFrom}, dateTo: {dateTo}, category: {category}", null, UserId);
                 return Ok(result);
-                
+
             }
             catch (Exception ex)
             {
@@ -209,13 +209,13 @@ namespace ExpensesTrackerAPI.Controllers
                     _logger.LogMessage($"[ExpenseController.Get] Expense {expenseId} accessed", (int)Helpers.LogLevel.Information, null, null, null, UserId);
                     return Ok(expense);
                 }
-                    
+
             }
             catch (Exception ex)
             {
                 _logger.LogMessage($"[ExpenseController.Get] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"epenseId: {expenseId}", null, UserId);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
             }
-        }     
+        }
     }
 }

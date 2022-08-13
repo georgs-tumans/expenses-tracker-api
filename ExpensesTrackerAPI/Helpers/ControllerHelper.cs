@@ -30,7 +30,7 @@ namespace ExpensesTrackerAPI.Helpers
                 return found;
 
             var cat = await _catProvider.GetCategory(catId);
-    
+
             if (cat is not null)
             {
                 //Check if this user has such a category (only for non-default ones). Admins can add expenses to any categories

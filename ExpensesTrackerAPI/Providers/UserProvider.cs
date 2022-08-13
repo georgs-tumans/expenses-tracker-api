@@ -11,8 +11,8 @@ namespace ExpensesTrackerAPI.Providers
     public class UserProvider : ApiBaseProvider
     {
         public UserProvider(DbContext context) : base(context) { }
-        
-#region GetMethods
+
+        #region GetMethods
         /// <summary>
         /// Returns a list of all existing users from database
         /// </summary>
@@ -91,7 +91,7 @@ namespace ExpensesTrackerAPI.Providers
                 var userByEmail = await GetUserByEmailAsync(request.Email);
                 if (userByEmail is not null && userByEmail.UserId != userId)
                     throw new ArgumentException("E-mail already taken");
-  
+
                 user.Email = request.Email;
             }
 
@@ -101,7 +101,7 @@ namespace ExpensesTrackerAPI.Providers
                 var userByUsername = await GetUserByUsernameAsync(request.Username);
                 if (userByUsername is not null && userByUsername.UserId != userId)
                     throw new ArgumentException("Username already taken");
-                
+
                 user.Username = request.Username;
             }
 

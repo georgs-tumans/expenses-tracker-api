@@ -104,13 +104,13 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     _authService.SendConfirmationEmail(ctoken, link, user);
                     _logger.LogMessage($"[AuthController.Register] Email confirmation link sent to {user.Email}", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
                 }
-                    
+
                 else
                 {
                     _logger.LogMessage($"[AuthController.Register] Failed to generate email confirmation link", (int)Helpers.LogLevel.Error, null, JsonSerializer.Serialize(request));
                     return StatusCode((int)HttpStatusCode.InternalServerError);
                 }
-                    
+
                 return Ok();
 
             }
@@ -133,14 +133,14 @@ namespace ExpensesTrackerAPI.Controllers.v1
         [SwaggerResponse(404, Description = "Not found")]
         [SwaggerResponse(500, Description = "Internal server error")]
         [Route("api/v{version:apiVersion}/[controller]/login")]
-        public async Task<ActionResult<LoginResponse>> Login(LoginUserRequest request)
+        public Task<ActionResult<LoginResponse>> Login(LoginUserRequest request)
         {
             try
             {
                 if (String.IsNullOrEmpty(request.AuthString))
                 {
                     _logger.LogMessage($"[AuthController.Login] Auth string not provided", (int)Helpers.LogLevel.Information, null, $"User: {request.AuthString}");
-                    return BadRequest("Either e-mail or user name must be provided");
+                    return Task.FromResult(BadRequest("Either e-mail or user name must be provided"));
                 }
 
                 else
@@ -150,13 +150,13 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     if (user is null)
                     {
                         _logger.LogMessage($"[AuthController.Login] User not found", (int)Helpers.LogLevel.Information, null, $"User: {request.AuthString}");
-                        return NotFound("User not found");
+                        return Task.FromResult(NotFound("User not found"));
                     }
 
                     if (user.Active == 0)
                     {
                         _logger.LogMessage($"[AuthController.Login] User {user.UserId} account has not been activated yet", (int)Helpers.LogLevel.Information, null, $"User: {request.AuthString}");
-                        return StatusCode((int)HttpStatusCode.Forbidden, "This account has not been activated");
+                        return Task.FromResult(StatusCode((int)HttpStatusCode.Forbidden, "This account has not been activated"));
                     }
 
                     else
@@ -180,12 +180,12 @@ namespace ExpensesTrackerAPI.Controllers.v1
                             };
 
                             _logger.LogMessage($"[AuthController.Login] User logged in", (int)Helpers.LogLevel.Information, null, $"User: {request.AuthString}");
-                            return Ok(response);
+                            return Task.FromResult(Ok(response));
                         }
                         else
                         {
                             _logger.LogMessage($"[AuthController.Login] Invalid password", (int)Helpers.LogLevel.Information, null, $"User: {request.AuthString}");
-                            return BadRequest("Incorrect password");
+                            return Task.FromResult(BadRequest("Incorrect password"));
                         }
 
                     }
@@ -195,7 +195,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
             catch (Exception ex)
             {
                 _logger.LogMessage($"[AuthController.Login] {ex.Message}", (int)Helpers.LogLevel.Error, ex.StackTrace, $"User: {request.AuthString}");
-                return StatusCode((int)HttpStatusCode.InternalServerError);
+                return Task.FromResult(StatusCode((int)HttpStatusCode.InternalServerError));
             }
         }
 

@@ -83,7 +83,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
             try
             {
                 int userToGet = UserId;
-                
+
                 //Admins can request data on any user but regular users must only have access to their own data
                 if (IsAdmin && userId is not null)
                     userToGet = (int)userId;
@@ -97,7 +97,8 @@ namespace ExpensesTrackerAPI.Controllers.v1
                 User usr = await _userProvider.GetUserAsync(userToGet);
                 if (usr is not null)
                 {
-                    GetUserResponse response = new GetUserResponse() {
+                    GetUserResponse response = new GetUserResponse()
+                    {
                         Name = usr.Name,
                         Surname = usr.Surname,
                         AccountType = usr.AccountType,
@@ -113,12 +114,12 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     return Ok(response);
 
                 }
-                  
+
                 else
                 {
                     _logger.LogMessage($"[UsersController.GetUser] User {userToGet} not found", (int)Helpers.LogLevel.Information, null, null, null, UserId);
                     return NotFound("User not found");
-                }      
+                }
             }
             catch (Exception ex)
             {
@@ -146,15 +147,15 @@ namespace ExpensesTrackerAPI.Controllers.v1
 
                 else if (userId is not null && userId != UserId && !IsAdmin)
                 {
-                    _logger.LogMessage($"[UsersController.Delete] A non-admin attempted to delete another user", (int)Helpers.LogLevel.Information, null, $"userId: {userId}",null, UserId);
+                    _logger.LogMessage($"[UsersController.Delete] A non-admin attempted to delete another user", (int)Helpers.LogLevel.Information, null, $"userId: {userId}", null, UserId);
                     return StatusCode((int)HttpStatusCode.Forbidden);
                 }
 
-               await _userProvider.DeactivateUser(userToDelete);
-                  
+                await _userProvider.DeactivateUser(userToDelete);
+
                 _logger.LogMessage($"[UsersController.Delete] User {userToDelete} deleted", (int)Helpers.LogLevel.Information, null, null, null, UserId);
                 return Ok();
-                
+
             }
             catch (ArgumentNullException ex)
             {
@@ -180,7 +181,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
             try
             {
                 var user = await _userProvider.UpdateUserAsync(request, UserId);
-                
+
                 return Ok(new GetUserResponse
                 {
                     Surname = user.Surname,
@@ -193,7 +194,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     RegistrationDate = user.RegistrationDate,
                     Username = user.Username
                 });
-              
+
             }
             catch (ArgumentNullException ex)
             {
@@ -225,7 +226,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
             {
                 if (!IsAdmin)
                     return StatusCode((int)HttpStatusCode.Forbidden);
-                
+
 
                 await _userProvider.ChangeUserAccountType(userId, accType);
                 _logger.LogMessage($"[UsersController.ChangeAccountType] User {userId} account type changed", (int)Helpers.LogLevel.Information, null, $"userId: {userId}, accType: {(int)accType}", null, UserId);

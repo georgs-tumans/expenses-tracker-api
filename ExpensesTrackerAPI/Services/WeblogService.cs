@@ -45,14 +45,14 @@ namespace ExpensesTrackerAPI.Helpers
                         _logger.LogWarning(exception.ToString());
                         break;
                     case (int)LogLevel.Information:
-                        _logger.LogInformation(exception.ToString()); 
+                        _logger.LogInformation(exception.ToString());
                         break;
                     default:
                         _logger.LogDebug(exception.ToString());
                         break;
                 }
             }
-            
+
         }
     }
 }

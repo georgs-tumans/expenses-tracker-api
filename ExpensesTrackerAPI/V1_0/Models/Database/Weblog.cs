@@ -11,10 +11,10 @@ namespace ExpensesTrackerAPI.Models.Database
         [Required]
         public int LogLevel { get; set; }
         [Required]
-        public string LogMessage {get; set;}
-        public string? LogInfo1 { get; set;}
-        public string? LogInfo2 { get; set;} 
-        public string? StackTrace { get; set;}
+        public string LogMessage { get; set; }
+        public string? LogInfo1 { get; set; }
+        public string? LogInfo2 { get; set; }
+        public string? StackTrace { get; set; }
         public int? UserId { get; set; }
 
     }
