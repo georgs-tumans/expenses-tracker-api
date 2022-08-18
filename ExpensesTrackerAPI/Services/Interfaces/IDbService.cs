@@ -21,6 +21,22 @@ namespace ExpensesTrackerAPI.Services
         public IQueryable<TEntity> GetAll<TEntity>() where TEntity : class;
 
         /// <summary>
+        /// Return a collection of data - result of a join between two datbase entities
+        /// </summary>
+        /// <param name="filter1">The linq query condition (lambda expression) of the first joinable entity</param>
+        /// <param name="filter2">The linq query condition (lambda expression) of the second joinable entity</param>
+        /// <param name="joinField1">First entity's field to join on</param>
+        /// <param name="joinField2">Second entity's field to join on</param>
+        /// <param name="resultExpression">The expression to create the returnable result type</param>
+        /// <returns>List of results</returns>
+        public IQueryable<TResult> GetByJoin<TEntity1, TEntity2, TResult>(Expression<Func<TEntity1, bool>> filter1,
+                                                                          Expression<Func<TEntity2, bool>> filter2,
+                                                                          Expression<Func<TEntity1, int>> joinField1,
+                                                                          Expression<Func<TEntity2, int>> joinField2,
+                                                                          Expression<Func<TEntity1, TEntity2, TResult>> resultExpression) where TEntity1 : class
+                                                                                                                                          where TEntity2 : class
+                                                                                                                                          where TResult : class;
+        /// <summary>
         /// Updates a database entry
         /// </summary>
         /// <param name="entity">The item to update</param>

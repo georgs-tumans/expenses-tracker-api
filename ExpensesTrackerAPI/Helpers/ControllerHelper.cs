@@ -29,7 +29,7 @@ namespace ExpensesTrackerAPI.Helpers
             if (catId == 0)
                 return found;
 
-            var cat = await _catProvider.GetCategory(catId);
+            var cat = await _catProvider.GetCategoryAsync(catId);
 
             if (cat is not null)
             {

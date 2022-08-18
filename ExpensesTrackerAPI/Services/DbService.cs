@@ -37,6 +37,25 @@ namespace ExpensesTrackerAPI.Services
 
         }
 
+        public IQueryable<TResult> GetByJoin<TEntity1, TEntity2, TResult>(Expression<Func<TEntity1, bool>> filter1,
+                                                                          Expression<Func<TEntity2, bool>> filter2,
+                                                                          Expression<Func<TEntity1, int>> joinField1,
+                                                                          Expression<Func<TEntity2, int>> joinField2,
+                                                                          Expression<Func<TEntity1, TEntity2, TResult>> resultExpression) where TEntity1 : class
+                                                                                                                                          where TEntity2 : class
+                                                                                                                                          where TResult : class
+        {
+            try
+            {
+                return _dbContext.Set<TEntity1>().Where(filter1).Join(_dbContext.Set<TEntity2>().Where(filter2), joinField1, joinField2, resultExpression).AsNoTracking();
+            }
+            catch (Exception ex)
+            {
+                throw new ArgumentException($"[DbService.GetByJoin] Error querying the join of {typeof(TEntity1)} and {typeof(TEntity2)} - {ex.Message}", ex.ToString());
+            }
+
+        }
+
         public void Update<TEntity>(TEntity entity) where TEntity : class
         {
             try
