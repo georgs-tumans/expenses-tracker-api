@@ -57,6 +57,20 @@ namespace ExpensesTrackerAPI.Providers
         }
 
         /// <summary>
+        /// Gets a user entry by either email or username
+        /// </summary>
+        /// <param name="authString">A string containing either an email address or username</param>
+        /// <returns>A single user object or null</returns>
+        public async Task<User?> GetUserByAuthStringAsync(string authString)
+        {
+            var user = await GetUserByUsernameAsync(authString);
+            if (user == null)
+                user = await GetUserByEmailAsync(authString);
+
+            return user;
+        }
+
+        /// <summary>
         /// Gets a user entry by the provided username
         /// </summary>
         /// <param name="userId">username of the user</param>
@@ -154,6 +168,18 @@ namespace ExpensesTrackerAPI.Providers
         }
 
         /// <summary>
+        /// Activates a user account in database
+        /// </summary>
+        /// <param name="user">User to activate</param>
+        /// <returns></returns>
+        public async Task ActivateUserAsync(User user)
+        {
+            user.Active = 1;
+            _dbService.Update<User>(user);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>
         /// Changes the account type of a user
         /// </summary>
         /// <param name="userId">ID of the user to change the account type for</param>
@@ -170,6 +196,56 @@ namespace ExpensesTrackerAPI.Providers
             _dbService.Update(user);
 
             await _dbContext.SaveChangesAsync();
+        }
+
+
+        /// <summary>
+        /// Creates a new user entry in database and sends a verification email
+        /// </summary>
+        /// <param name="request">The user register request</param>
+        /// <param name="userId">Authentification service</param>
+        /// <returns>The newly created user object</returns>
+        public async Task<User> RegisterNewUserAsync(RegisterUserRequest request, IAuthService authService, LinkGenerator linkGenerator, HttpContext context)
+        {
+            authService.HashPassword(request.Password.Trim(), out byte[] passwordHash, out byte[] passwordSalt);
+
+            User user = new User()
+            {
+                Name = request.Name != null ? request.Name.Trim() : null,
+                Surname = request.Surname != null ? request.Surname.Trim() : null,
+                Email = request.Email.Trim(),
+                PhoneNumber = request.PhoneNumber != null ? request.PhoneNumber.Trim() : null,
+                Username = request.UserName.Trim(),
+                PasswordHash = passwordHash,
+                PasswordSalt = passwordSalt,
+                Active = 0,
+                AccountType = (int)UserType.User,
+                RegistrationDate = DateTime.UtcNow
+            };
+            using (var dbContextTransaction = _dbContext.Database.BeginTransaction())
+            {
+                _dbService.Add<User>(user);
+                await _dbContext.SaveChangesAsync();
+
+                string ctoken = Guid.NewGuid().ToString();
+                user.EmailConfirmationToken = ctoken;
+                user.EmailConfirmationTokenRegistration = DateTime.UtcNow;
+
+                string? link = linkGenerator.GetUriByAction(context, "ConfirmEmail", "Auth", new { id = user.UserId, token = ctoken });
+                if (!String.IsNullOrEmpty(link))
+                {
+                    authService.SendConfirmationEmail(ctoken, link, user);
+                    await dbContextTransaction.CommitAsync();
+                }
+                    
+                else
+                {
+                    await dbContextTransaction.RollbackAsync();
+                    throw new ArgumentNullException(link);
+                }
+                    
+            }
+            return user;
         }
     }
 }

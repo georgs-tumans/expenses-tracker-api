@@ -1,4 +1,5 @@
 ﻿using ExpensesTrackerAPI.Providers;
+using System.Net.Mail;
 
 namespace ExpensesTrackerAPI.Helpers
 {
@@ -40,6 +41,16 @@ namespace ExpensesTrackerAPI.Helpers
             }
 
             return found;
+        }
+
+        /// <summary>
+        /// Validates whether a given email address is valid
+        /// </summary>
+        /// <param name="email">The email address to validate</param>
+        /// <returns>Whether the email is valid</returns>
+        public bool ValidateEmail(string email)
+        {
+            return MailAddress.TryCreate(email, out var outEmail);
         }
     }
 }

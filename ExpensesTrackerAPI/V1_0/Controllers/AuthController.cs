@@ -1,10 +1,9 @@
-﻿using ExpensesTrackerAPI.Models.Database;
-using ExpensesTrackerAPI.Models.Requests;
+﻿using ExpensesTrackerAPI.Models.Requests;
 using ExpensesTrackerAPI.Models.Responses;
+using ExpensesTrackerAPI.V1_0.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Net;
-using System.Net.Mail;
 using System.Text.Json;
 
 namespace ExpensesTrackerAPI.Controllers.v1
@@ -12,19 +11,23 @@ namespace ExpensesTrackerAPI.Controllers.v1
     [ApiController]
     [ApiVersion("1.0")]
     [Produces("application/json")]
-    public class AuthController : Controller
+    public class AuthController : ApiControllerBase
     {
         private static IWeblogService _logger;
-        private readonly ExpenseDbContext _dbContext;
         private readonly IAuthService _authService;
         private readonly IConfiguration _configuration;
+        private readonly LinkGenerator _linkGenerator;
 
-        public AuthController(IWeblogService logger, ExpenseDbContext context, IAuthService authService, IConfiguration configuration)
+        public AuthController(IWeblogService logger, 
+                              IAuthService authService, 
+                              IConfiguration configuration, 
+                              ExpenseDbContext context, 
+                              LinkGenerator linkGenerator) : base(new Providers.UserProvider(context), new ControllerHelper(context))
         {
             _logger = logger;
-            _dbContext = context;
             _authService = authService;
             _configuration = configuration;
+            _linkGenerator = linkGenerator;
         }
 
         [HttpPost]
@@ -39,7 +42,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
         {
             try
             {
-                if (!MailAddress.TryCreate(request.Email, out var email))
+                if (!_controllerHelper.ValidateEmail(request.Email))
                 {
                     _logger.LogMessage($"[AuthController.Register] Invalid email address", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
                     return BadRequest("Please enter a correct e-mail address");
@@ -59,60 +62,30 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     return BadRequest("Passwords do not match");
                 }
 
-
-                if (_dbContext.Users.Where(x => x.Email == request.Email).Any())
+                if (await _userProvider.GetUserByEmailAsync(request.Email) is not null)
                 {
                     _logger.LogMessage($"[AuthController.Register] An account with the provided email already exists", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
                     return BadRequest("An account with this email already exists");
                 }
 
 
-                if (_dbContext.Users.Where(x => x.Username == request.UserName).Any())
+                if (await _userProvider.GetUserByUsernameAsync(request.UserName) is not null)
                 {
                     _logger.LogMessage($"[AuthController.Register] Username is taken", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
                     return BadRequest("This user name is already taken");
                 }
 
-
-                _authService.HashPassword(request.Password.Trim(), out byte[] passwordHash, out byte[] passwordSalt);
-                User user = new User()
-                {
-                    Name = request.Name != null ? request.Name.Trim() : null,
-                    Surname = request.Surname != null ? request.Surname.Trim() : null,
-                    Email = request.Email.Trim(),
-                    PhoneNumber = request.PhoneNumber != null ? request.PhoneNumber.Trim() : null,
-                    Username = request.UserName.Trim(),
-                    PasswordHash = passwordHash,
-                    PasswordSalt = passwordSalt,
-                    Active = 0,
-                    AccountType = (int)UserType.User,
-                    RegistrationDate = DateTime.UtcNow
-                };
-
-                _dbContext.Users.Add(user);
-                await _dbContext.SaveChangesAsync();
-                _logger.LogMessage($"[AuthController.Register] User created", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), $"New user id: {user.UserId}");
-
-                string ctoken = Guid.NewGuid().ToString();
-                user.EmailConfirmationToken = ctoken;
-                user.EmailConfirmationTokenRegistration = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync();
-
-                string link = Url.ActionLink("ConfirmEmail", "Auth", new { id = user.UserId, token = ctoken }, protocol: HttpContext.Request.Scheme);
-                if (link is not null)
-                {
-                    _authService.SendConfirmationEmail(ctoken, link, user);
-                    _logger.LogMessage($"[AuthController.Register] Email confirmation link sent to {user.Email}", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
-                }
-
-                else
-                {
-                    _logger.LogMessage($"[AuthController.Register] Failed to generate email confirmation link", (int)Helpers.LogLevel.Error, null, JsonSerializer.Serialize(request));
-                    return StatusCode((int)HttpStatusCode.InternalServerError);
-                }
-
+                var newUser = await _userProvider.RegisterNewUserAsync(request, _authService, _linkGenerator, HttpContext.Request.HttpContext);
+                _logger.LogMessage($"[AuthController.Register] User created", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request), $"New user id: {newUser.UserId}");
+                _logger.LogMessage($"[AuthController.Register] Email confirmation link sent to {newUser.Email}", (int)Helpers.LogLevel.Information, null, JsonSerializer.Serialize(request));
+               
                 return Ok();
 
+            }
+            catch(ArgumentNullException ex)
+            {
+                _logger.LogMessage($"[AuthController.Register] Failed to generate email confirmation link", (int)Helpers.LogLevel.Error, null, JsonSerializer.Serialize(request));
+                return StatusCode((int)HttpStatusCode.InternalServerError);
             }
             catch (Exception ex)
             {
@@ -145,7 +118,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
 
                 else
                 {
-                    var user = _dbContext.Users.Where(x => (x.Username == request.AuthString.Trim() || x.Email == request.AuthString.Trim())).FirstOrDefault();
+                    var user = await _userProvider.GetUserByAuthStringAsync(request.AuthString);
 
                     if (user is null)
                     {
@@ -211,7 +184,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
                     return Redirect(_configuration.GetSection("EmailConfirmFailUrl").Value);
                 }
 
-                var user = await _dbContext.Users.FindAsync(id);
+                var user = await _userProvider.GetUserAsync(id);
                 if (user is null)
                 {
                     _logger.LogMessage($"[AuthController.ConfirmEmail] Could not find the user", (int)Helpers.LogLevel.Information, null, $"user id: {id}, token: {token}");
@@ -229,8 +202,7 @@ namespace ExpensesTrackerAPI.Controllers.v1
 
                 if (isSuccess)
                 {
-                    user.Active = 1;
-                    await _dbContext.SaveChangesAsync();
+                   await _userProvider.ActivateUserAsync(user);
                     _logger.LogMessage($"[AuthController.ConfirmEmail] User {id} email '{user.Email}' confirmed and account activated", (int)Helpers.LogLevel.Information, null, $"user id: {id}, token: {token}");
                     return Redirect(_configuration.GetSection("EmailConfirmSuccessUrl").Value);
                 }
