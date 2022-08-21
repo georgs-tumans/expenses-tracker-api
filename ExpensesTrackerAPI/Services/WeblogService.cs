@@ -1,22 +1,24 @@
 ﻿using ExpensesTrackerAPI.Models.Database;
+using ExpensesTrackerAPI.Providers;
 
 namespace ExpensesTrackerAPI.Helpers
 {
     public class WeblogService : IWeblogService
     {
-        private readonly ExpenseDbContext _dbContext;
         private readonly ILogger<WeblogService> _logger;
+        private readonly WeblogProvider _weblogProvider;
         public WeblogService(ExpenseDbContext context, ILogger<WeblogService> logger)
         {
-            _dbContext = context;
             _logger = logger;
+            _weblogProvider = new WeblogProvider(context);
         }
 
+        
         public void LogMessage(string msg, int level, string? stackTrace = null, string? info1 = null, string? info2 = null, int? userId = null)
         {
             try
             {
-                _dbContext.Weblogs.Add(new Weblog
+                _weblogProvider.AddEntry(new Weblog
                 {
                     LogMessage = msg,
                     LogLevel = level,
@@ -26,8 +28,6 @@ namespace ExpensesTrackerAPI.Helpers
                     LogTime = DateTime.UtcNow,
                     UserId = userId
                 });
-
-                _dbContext.SaveChanges();
             }
             catch (Exception ex)
             {

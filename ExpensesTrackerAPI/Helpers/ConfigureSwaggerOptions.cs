@@ -5,6 +5,9 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace ExpensesTrackerAPI
 {
+    /// <summary>
+    /// Class for configuring Swagger for the API
+    /// </summary>
     public class ConfigureSwaggerOptions : IConfigureNamedOptions<SwaggerGenOptions>
     {
         private readonly IApiVersionDescriptionProvider _provider;

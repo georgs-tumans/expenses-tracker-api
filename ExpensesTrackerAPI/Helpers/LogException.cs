@@ -1,5 +1,8 @@
 ﻿namespace ExpensesTrackerAPI.Helpers
 {
+    /// <summary>
+    /// Custom exception for when logging to database fails with an exception
+    /// </summary>
     public class LogException : Exception
     {
         public LogException(string msg, string st, string info)

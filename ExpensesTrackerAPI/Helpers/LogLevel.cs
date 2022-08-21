@@ -1,5 +1,8 @@
 ﻿namespace ExpensesTrackerAPI.Helpers
 {
+    /// <summary>
+    /// Describes multiple log message levels
+    /// </summary>
     public enum LogLevel
     {
         Debug = 1,
